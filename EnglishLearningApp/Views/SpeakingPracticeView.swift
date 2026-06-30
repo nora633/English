@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 struct SpeakingPracticeView: View {
@@ -10,6 +11,9 @@ struct SpeakingPracticeView: View {
     @State private var recallAnswer = ""
     @State private var showsDictationFeedback = false
     @State private var showsRecallFeedback = false
+    @State private var backendFeedback: BackendSpeakingFeedback?
+    @State private var backendError: String?
+    @State private var isLoadingBackendFeedback = false
 
     var body: some View {
         NavigationStack {
@@ -21,6 +25,7 @@ struct SpeakingPracticeView: View {
                         scorePanel
                         transcriptPanel
                         suggestionsPanel
+                        backendFeedbackPanel
                         dictationPanel
                     }
                     if showsDictationFeedback {
@@ -190,5 +195,111 @@ struct SpeakingPracticeView: View {
             }
         }
         .cardStyle()
+    }
+
+    private var backendFeedbackPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionTitle(title: "后端评分", systemImage: "network")
+            Text("从本地后端获取一次真实接口形状的评分。没有 OpenAI key 时会返回 mock 结果。")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Button {
+                Task {
+                    await requestBackendFeedback()
+                }
+            } label: {
+                if isLoadingBackendFeedback {
+                    Label("请求中", systemImage: "hourglass")
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Label("请求后端评分", systemImage: "arrow.down.circle")
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.teal)
+            .disabled(isLoadingBackendFeedback)
+
+            if let backendFeedback {
+                VStack(alignment: .leading, spacing: 10) {
+                    ScoreBar(label: "后端清晰度", value: backendFeedback.clarity)
+                    ScoreBar(label: "后端流利度", value: backendFeedback.fluency)
+                    Text(backendFeedback.summary)
+                        .font(.body)
+                    ForEach(backendFeedback.suggestions, id: \.self) { suggestion in
+                        Label(suggestion, systemImage: "checkmark.circle")
+                    }
+                    Text(backendFeedback.mock ? "mock 响应" : "OpenAI 响应")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(12)
+                .background(AppColors.subtleBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+
+            if let backendError {
+                Text(backendError)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+        .cardStyle()
+    }
+
+    @MainActor
+    private func requestBackendFeedback() async {
+        isLoadingBackendFeedback = true
+        backendError = nil
+        defer { isLoadingBackendFeedback = false }
+
+        do {
+            let requestPayload = BackendSpeakingScoreRequest(
+                target: lesson.listeningLines[0],
+                transcript: score.transcript
+            )
+            var request = URLRequest(url: URL(string: "http://127.0.0.1:8765/speaking/score")!)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONEncoder().encode(requestPayload)
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
+                throw URLError(.badServerResponse)
+            }
+            backendFeedback = try JSONDecoder().decode(BackendSpeakingFeedback.self, from: data)
+        } catch {
+            backendError = "请求失败：请确认 backend/server.py 正在运行。"
+        }
+    }
+}
+
+private struct BackendSpeakingScoreRequest: Encodable {
+    let target: String
+    let transcript: String
+}
+
+private struct BackendSpeakingFeedback: Decodable {
+    let clarity: Int
+    let fluency: Int
+    let completeness: Int
+    let naturalness: Int
+    let summary: String
+    let suggestions: [String]
+    let missedKeywords: [String]
+    let model: String
+    let mock: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case clarity
+        case fluency
+        case completeness
+        case naturalness
+        case summary
+        case suggestions
+        case missedKeywords = "missed_keywords"
+        case model
+        case mock
     }
 }

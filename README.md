@@ -38,3 +38,13 @@
 ## Run Prototype
 
 需要安装完整 Xcode。打开 `EnglishLearningApp.xcodeproj`，选择 iPhone 模拟器运行 `EnglishLearningApp` scheme。
+
+## Run Backend Prototype
+
+```bash
+cd backend
+cp .env.example .env
+python3 server.py
+```
+
+默认没有 `OPENAI_API_KEY` 时会使用 mock 响应，方便先打通 iOS 调用链。

@@ -32,4 +32,4 @@
 
 - [产品规格](docs/product-spec.md)
 - [版本路线图](docs/roadmap.md)
-
+- [GitHub 设置指南](docs/github-setup.md)

@@ -94,6 +94,24 @@ struct WritingFeedback: View {
     }
 }
 
+struct FlowLayout<Data: RandomAccessCollection, Content: View>: View where Data.Element: Hashable {
+    let items: Data
+    let content: (Data.Element) -> Content
+
+    init(items: Data, @ViewBuilder content: @escaping (Data.Element) -> Content) {
+        self.items = items
+        self.content = content
+    }
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 8)], alignment: .leading, spacing: 8) {
+            ForEach(Array(items), id: \.self) { item in
+                content(item)
+            }
+        }
+    }
+}
+
 struct ScoreBar: View {
     let label: String
     let value: Int

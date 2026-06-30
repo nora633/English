@@ -72,4 +72,15 @@ struct ReviewSummary {
     let completedMinutes: Int
     let reusableExpression: String
     let nextFocus: String
+    let recommendation: DailyRecommendation
+}
+
+struct DailyRecommendation {
+    let title: String
+    let stage: LearningStage
+    let difficulty: String
+    let reason: String
+    let weakFocus: String
+    let mix: String
+    let keywords: [String]
 }

@@ -139,6 +139,15 @@ enum SampleData {
         streakDays: 3,
         completedMinutes: 45,
         reusableExpression: "I was about to grab some coffee. Do you want anything?",
-        nextFocus: "明天重点练连读：want me to / text you when"
+        nextFocus: "明天重点练连读：want me to / text you when",
+        recommendation: DailyRecommendation(
+            title: "咖啡店偶遇",
+            stage: .daily,
+            difficulty: "A2-B1",
+            reason: "今天仍在日常表达阶段，先把 about to、grab、anything 练到能听、写、说出来。",
+            weakFocus: "听写复现 anything / downstairs，跟读继续练 want me to 的连读。",
+            mix: "60% 复习弱项 · 30% 同级新场景 · 10% 轻挑战",
+            keywords: ["grab", "anything", "downstairs", "want me to"]
+        )
     )
 }

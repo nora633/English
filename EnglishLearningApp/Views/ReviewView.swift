@@ -10,6 +10,7 @@ struct ReviewView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     progressHeader
+                    recommendationCard
                     expressionCard
                     chunkReview
                     nextStepCard
@@ -19,6 +20,51 @@ struct ReviewView: View {
             .background(AppColors.pageBackground)
             .navigationTitle("学习复盘")
         }
+    }
+
+    private var recommendationCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionTitle(title: "明日推荐", systemImage: "sparkles")
+
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(review.recommendation.title)
+                        .font(.title3.weight(.bold))
+                    Text("\(review.recommendation.stage.rawValue) · \(review.recommendation.difficulty)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.teal)
+                }
+                Spacer()
+                Text("推荐")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.indigo)
+                    .clipShape(Capsule())
+            }
+
+            Text(review.recommendation.reason)
+                .font(.body)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Label(review.recommendation.mix, systemImage: "slider.horizontal.3")
+                Label(review.recommendation.weakFocus, systemImage: "target")
+            }
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+
+            FlowLayout(items: review.recommendation.keywords) { keyword in
+                Text(keyword)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.teal)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.teal.opacity(0.12))
+                    .clipShape(Capsule())
+            }
+        }
+        .cardStyle()
     }
 
     private var progressHeader: some View {

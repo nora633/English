@@ -55,6 +55,7 @@ enum SampleData {
     static let todayLesson = DailyLesson(
         title: "今日 15 分钟听说训练",
         durationMinutes: 15,
+        completedMinutes: 0,
         theme: themes[0],
         keyWords: [
             KeyWord(
@@ -86,6 +87,26 @@ enum SampleData {
                 priority: "复用"
             )
         ],
+        grammarPoints: [
+            GrammarPoint(
+                pattern: "I was about to + 动词原形",
+                meaning: "我正准备做某事",
+                example: "I was about to grab some coffee.",
+                note: "适合解释自己马上要做的动作，比 I will 更有现场感。"
+            ),
+            GrammarPoint(
+                pattern: "Do you want me to + 动词原形?",
+                meaning: "你要我帮你做某事吗？",
+                example: "Do you want me to text you when I get there?",
+                note: "日常帮忙、顺手询问时很自然。"
+            ),
+            GrammarPoint(
+                pattern: "when + 主语 + 动词",
+                meaning: "当某事发生时",
+                example: "I can text you when I get there.",
+                note: "口语里常用来说明时间条件。"
+            )
+        ],
         targetChunks: [
             "I was about to...",
             "That makes sense.",
@@ -94,7 +115,9 @@ enum SampleData {
         listeningLines: [
             "I was about to grab some coffee. Do you want anything?",
             "That makes sense. I would probably do the same thing.",
-            "Do you want me to text you when I get there?"
+            "Do you want me to text you when I get there?",
+            "I did not mean to interrupt. I just wanted to check in.",
+            "Let me know if you need anything from downstairs."
         ],
         speakingPrompt: "用今天的 3 个词块，复述一个你下楼买咖啡时遇到邻居的场景。"
     )

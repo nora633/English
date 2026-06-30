@@ -32,8 +32,10 @@ struct LearningTheme: Identifiable {
 struct DailyLesson {
     let title: String
     let durationMinutes: Int
+    let completedMinutes: Int
     let theme: LearningTheme
     let keyWords: [KeyWord]
+    let grammarPoints: [GrammarPoint]
     let targetChunks: [String]
     let listeningLines: [String]
     let speakingPrompt: String
@@ -46,6 +48,14 @@ struct KeyWord: Identifiable {
     let usage: String
     let example: String
     let priority: String
+}
+
+struct GrammarPoint: Identifiable {
+    let id = UUID()
+    let pattern: String
+    let meaning: String
+    let example: String
+    let note: String
 }
 
 struct SpeakingScore {

@@ -6,6 +6,10 @@ struct SpeakingPracticeView: View {
     var onFinish: () -> Void = {}
 
     @State private var hasSavedRecording = false
+    @State private var dictationAnswer = ""
+    @State private var recallAnswer = ""
+    @State private var showsDictationFeedback = false
+    @State private var showsRecallFeedback = false
 
     var body: some View {
         NavigationStack {
@@ -17,6 +21,12 @@ struct SpeakingPracticeView: View {
                         scorePanel
                         transcriptPanel
                         suggestionsPanel
+                        dictationPanel
+                    }
+                    if showsDictationFeedback {
+                        recallPanel
+                    }
+                    if showsRecallFeedback {
                         finishPanel
                     }
                 }
@@ -35,6 +45,64 @@ struct SpeakingPracticeView: View {
             Text("重点：about to / grab some coffee / want anything")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+        }
+        .cardStyle()
+    }
+
+    private var dictationPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionTitle(title: "听写", systemImage: "pencil.and.list.clipboard")
+            Text("跟读完成后，听目标句并写出你听到的英文。")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            TextField("I was about to...", text: $dictationAnswer, axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+            Button {
+                showsDictationFeedback = true
+            } label: {
+                Label("检查听写", systemImage: "checkmark.circle")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.teal)
+
+            if showsDictationFeedback {
+                WritingFeedback(
+                    title: "听写反馈",
+                    reference: lesson.listeningLines[0],
+                    note: "重点检查 about to、grab、anything 是否写完整。"
+                )
+            }
+        }
+        .cardStyle()
+    }
+
+    private var recallPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionTitle(title: "默写", systemImage: "keyboard")
+            Text("看中文提示，凭记忆写出自然英文。")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text("中文提示：我正准备去买杯咖啡。你要带点什么吗？")
+                .font(.body.weight(.semibold))
+            TextField("Write the sentence from memory", text: $recallAnswer, axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+            Button {
+                showsRecallFeedback = true
+            } label: {
+                Label("检查默写", systemImage: "eye")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.teal)
+
+            if showsRecallFeedback {
+                WritingFeedback(
+                    title: "默写反馈",
+                    reference: lesson.listeningLines[0],
+                    note: "v0.3 会加入相似度评分、漏词提醒和自然表达建议。"
+                )
+            }
         }
         .cardStyle()
     }

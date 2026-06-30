@@ -50,6 +50,50 @@ struct KeyWordRow: View {
     }
 }
 
+struct GrammarPointRow: View {
+    let point: GrammarPoint
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(point.pattern)
+                .font(.headline)
+            Text(point.meaning)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.teal)
+            Text(point.example)
+                .font(.body)
+            Text(point.note)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(14)
+        .background(AppColors.subtleBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+struct WritingFeedback: View {
+    let title: String
+    let reference: String
+    let note: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(reference)
+                .font(.body.weight(.semibold))
+            Text(note)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .background(AppColors.subtleBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
 struct ScoreBar: View {
     let label: String
     let value: Int

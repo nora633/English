@@ -33,3 +33,8 @@
 - [产品规格](docs/product-spec.md)
 - [版本路线图](docs/roadmap.md)
 - [GitHub 设置指南](docs/github-setup.md)
+- [iOS 静态原型](docs/ios-static-prototype.md)
+
+## Run Prototype
+
+需要安装完整 Xcode。打开 `EnglishLearningApp.xcodeproj`，选择 iPhone 模拟器运行 `EnglishLearningApp` scheme。

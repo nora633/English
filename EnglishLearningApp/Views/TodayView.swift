@@ -5,41 +5,16 @@ struct TodayView: View {
     var onChooseTheme: () -> Void = {}
     var onStartSpeaking: () -> Void = {}
 
-    @State private var completedStepCount = 0
     @State private var dictationAnswer = ""
     @State private var recallAnswer = ""
     @State private var showsWritingAnswers = false
-
-    private let steps = [
-        FlowStep(minutes: "2", title: "选择主题", detail: "确认今天练邻里寒暄"),
-        FlowStep(minutes: "3", title: "精听短句", detail: "抓住弱读和连读"),
-        FlowStep(minutes: "3", title: "听写默写", detail: "听一句写一句，再凭记忆默写"),
-        FlowStep(minutes: "4", title: "影子跟读", detail: "录音并获得转写"),
-        FlowStep(minutes: "2", title: "情景复述", detail: "复用当天表达"),
-        FlowStep(minutes: "1", title: "保存复盘", detail: "留下明天要练的点")
-    ]
-
-    private var progress: Double {
-        Double(completedStepCount) / Double(steps.count)
-    }
-
-    private var primaryActionTitle: String {
-        if completedStepCount == 0 { return "确认主题" }
-        if completedStepCount < 2 { return "完成本步" }
-        return "开始跟读"
-    }
-
-    private var primaryActionIcon: String {
-        if completedStepCount < 2 { return "checkmark" }
-        return "mic.fill"
-    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     hero
-                    taskTimeline
+                    keyWordsSection
                     chunkSection
                     listeningSection
                     writingSection
@@ -75,14 +50,6 @@ struct TodayView: View {
             Text(lesson.theme.focus)
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.85))
-
-            ProgressView(value: progress)
-                .tint(.white)
-                .padding(.top, 6)
-
-            Text("已完成 \(completedStepCount)/\(steps.count) 步")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.85))
         }
         .foregroundStyle(.white)
         .padding(22)
@@ -97,35 +64,27 @@ struct TodayView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
-    private var taskTimeline: some View {
+    private var keyWordsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionTitle(title: "15 分钟流程", systemImage: "list.bullet.clipboard")
-            ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
-                FlowStepRow(
-                    step: step,
-                    isActive: index == completedStepCount,
-                    isCompleted: index < completedStepCount
-                )
-            }
-
             HStack {
+                SectionTitle(title: "今日关键单词", systemImage: "character.book.closed")
+                Spacer()
                 Button {
                     onChooseTheme()
                 } label: {
-                    Label("换个主题", systemImage: "sparkles")
+                    Label("换主题", systemImage: "sparkles")
+                        .labelStyle(.iconOnly)
                 }
                 .buttonStyle(.bordered)
-
-                Button {
-                    advanceFlow()
-                } label: {
-                    Label(primaryActionTitle, systemImage: primaryActionIcon)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.teal)
             }
-            .padding(.top, 6)
+
+            Text("今天 15 分钟重点把这些词练到能听出来、写出来、说出来。")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            ForEach(lesson.keyWords) { item in
+                KeyWordRow(item: item)
+            }
         }
         .cardStyle()
     }
@@ -224,13 +183,5 @@ struct TodayView: View {
             .tint(.teal)
         }
         .cardStyle()
-    }
-
-    private func advanceFlow() {
-        if completedStepCount >= 2 {
-            onStartSpeaking()
-        } else {
-            completedStepCount += 1
-        }
     }
 }

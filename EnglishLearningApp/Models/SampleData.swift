@@ -4,6 +4,7 @@ enum SampleData {
     static let themes: [LearningTheme] = [
         LearningTheme(
             title: "邻里寒暄",
+            stage: .daily,
             kind: .sitcom,
             sourceHint: "The Neighborhood 风格",
             focus: "自然开场、接话、轻松回应",
@@ -11,6 +12,7 @@ enum SampleData {
         ),
         LearningTheme(
             title: "家庭晚餐小插曲",
+            stage: .media,
             kind: .sitcom,
             sourceHint: "Young Sheldon 风格",
             focus: "解释原因、表达惊讶、补充细节",
@@ -18,6 +20,7 @@ enum SampleData {
         ),
         LearningTheme(
             title: "热门英文歌副歌表达",
+            stage: .media,
             kind: .song,
             sourceHint: "流行歌主题",
             focus: "情绪表达、连读、弱读",
@@ -25,10 +28,27 @@ enum SampleData {
         ),
         LearningTheme(
             title: "咖啡店偶遇",
+            stage: .daily,
             kind: .dailyLife,
             sourceHint: "AI 生成生活场景",
             focus: "点单、寒暄、临时邀约",
             difficulty: "A2"
+        ),
+        LearningTheme(
+            title: "短新闻听读",
+            stage: .news,
+            kind: .news,
+            sourceHint: "慢速新闻风格",
+            focus: "抓主旨、数字、转折和因果",
+            difficulty: "B1-B2"
+        ),
+        LearningTheme(
+            title: "报刊观点精读",
+            stage: .reading,
+            kind: .article,
+            sourceHint: "报纸/杂志评论风格",
+            focus: "长句结构、观点表达、正式词汇",
+            difficulty: "B2-C1"
         )
     ]
 
@@ -36,6 +56,36 @@ enum SampleData {
         title: "今日 15 分钟听说训练",
         durationMinutes: 15,
         theme: themes[0],
+        keyWords: [
+            KeyWord(
+                word: "grab",
+                meaning: "顺手买 / 拿 / 吃点",
+                usage: "比 buy 更生活化，适合咖啡、午饭、东西",
+                example: "I was about to grab some coffee.",
+                priority: "必练"
+            ),
+            KeyWord(
+                word: "about to",
+                meaning: "正准备要做某事",
+                usage: "表达马上要发生的动作，日常口语高频",
+                example: "I was about to head downstairs.",
+                priority: "必练"
+            ),
+            KeyWord(
+                word: "anything",
+                meaning: "任何东西 / 要带什么吗",
+                usage: "寒暄和顺手帮忙时很自然",
+                example: "Do you want anything?",
+                priority: "听写"
+            ),
+            KeyWord(
+                word: "text",
+                meaning: "发短信 / 发消息",
+                usage: "日常安排、到达提醒、临时沟通",
+                example: "I can text you when I get there.",
+                priority: "复用"
+            )
+        ],
         targetChunks: [
             "I was about to...",
             "That makes sense.",
@@ -69,4 +119,3 @@ enum SampleData {
         nextFocus: "明天重点练连读：want me to / text you when"
     )
 }
-

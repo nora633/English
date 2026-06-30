@@ -3,6 +3,9 @@ import SwiftUI
 struct SpeakingPracticeView: View {
     private let lesson = SampleData.todayLesson
     private let score = SampleData.speakingScore
+    var onFinish: () -> Void = {}
+
+    @State private var hasSavedRecording = false
 
     var body: some View {
         NavigationStack {
@@ -10,9 +13,12 @@ struct SpeakingPracticeView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     targetSentence
                     recordingPanel
-                    scorePanel
-                    transcriptPanel
-                    suggestionsPanel
+                    if hasSavedRecording {
+                        scorePanel
+                        transcriptPanel
+                        suggestionsPanel
+                        finishPanel
+                    }
                 }
                 .padding(20)
             }
@@ -36,15 +42,16 @@ struct SpeakingPracticeView: View {
     private var recordingPanel: some View {
         VStack(spacing: 14) {
             Button {
+                hasSavedRecording.toggle()
             } label: {
-                Image(systemName: "mic.circle.fill")
+                Image(systemName: hasSavedRecording ? "checkmark.circle.fill" : "mic.circle.fill")
                     .font(.system(size: 72))
                     .symbolRenderingMode(.hierarchical)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.teal)
+            .foregroundStyle(hasSavedRecording ? .green : .teal)
 
-            Text("静态原型：这里将接入录音、播放和重新录制")
+            Text(hasSavedRecording ? "已保存一段 mock 录音，下面展示模拟反馈" : "静态原型：点击麦克风或保存录音来模拟完成跟读")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -56,6 +63,7 @@ struct SpeakingPracticeView: View {
                 .buttonStyle(.bordered)
 
                 Button {
+                    hasSavedRecording = true
                 } label: {
                     Label("保存录音", systemImage: "checkmark")
                 }
@@ -74,6 +82,24 @@ struct SpeakingPracticeView: View {
             ScoreBar(label: "流利度", value: score.fluency)
             ScoreBar(label: "完整度", value: score.completeness)
             ScoreBar(label: "自然度", value: score.naturalness)
+        }
+        .cardStyle()
+    }
+
+    private var finishPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionTitle(title: "下一步", systemImage: "arrow.right.circle")
+            Text("把今天的词块和反馈保存到复盘里，明天继续练同一类表达。")
+                .font(.body)
+                .foregroundStyle(.secondary)
+            Button {
+                onFinish()
+            } label: {
+                Label("进入复盘", systemImage: "chart.line.uptrend.xyaxis")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.teal)
         }
         .cardStyle()
     }

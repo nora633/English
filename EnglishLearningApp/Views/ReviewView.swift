@@ -3,6 +3,7 @@ import SwiftUI
 struct ReviewView: View {
     private let lesson = SampleData.todayLesson
     private let review = SampleData.review
+    var onRestart: () -> Void = {}
 
     var body: some View {
         NavigationStack {
@@ -63,8 +64,9 @@ struct ReviewView: View {
             Text(review.nextFocus)
                 .font(.body)
             Button {
+                onRestart()
             } label: {
-                Label("保存复盘", systemImage: "tray.and.arrow.down.fill")
+                Label("完成并回到今日", systemImage: "checkmark.circle.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)

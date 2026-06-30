@@ -6,6 +6,12 @@ enum AppColors {
     static let subtleBackground = Color(red: 0.93, green: 0.96, blue: 0.96)
 }
 
+struct FlowStep {
+    let minutes: String
+    let title: String
+    let detail: String
+}
+
 struct SectionTitle: View {
     let title: String
     let systemImage: String
@@ -40,6 +46,43 @@ struct TimelineRow: View {
             }
             Spacer()
         }
+    }
+}
+
+struct FlowStepRow: View {
+    let step: FlowStep
+    let isActive: Bool
+    let isCompleted: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: isCompleted ? "checkmark" : step.minutes + ".circle.fill")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(isCompleted ? .green : (isActive ? .teal : .secondary))
+                .frame(width: 28)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(step.title)
+                    .font(.headline)
+                Text(step.detail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+
+            if isActive {
+                Text("当前")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.teal)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.teal.opacity(0.12))
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(10)
+        .background(isActive ? Color.teal.opacity(0.08) : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 

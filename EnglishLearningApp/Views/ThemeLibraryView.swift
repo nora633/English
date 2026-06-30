@@ -108,11 +108,25 @@ struct ThemeDetailView: View {
 
     private var practiceSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionTitle(title: "可生成练习", systemImage: "wand.and.stars")
-            Label("精听句子", systemImage: "headphones")
-            Label("关键单词和词块", systemImage: "character.book.closed")
-            Label("跟读、听写、默写", systemImage: "mic")
-            Label("复盘错误点", systemImage: "chart.line.uptrend.xyaxis")
+            SectionTitle(title: "开始学习", systemImage: "play.circle")
+            Text("用这个素材生成今天的 15 分钟学习内容。")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Button {
+            } label: {
+                Label("生成今日 15 分钟练习", systemImage: "wand.and.stars")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.teal)
+
+            Button {
+            } label: {
+                Label("收藏素材", systemImage: "bookmark")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
         }
         .cardStyle()
     }

@@ -1,0 +1,234 @@
+import 'package:flutter/material.dart';
+
+import 'services/audio_player_service.dart';
+import 'services/audio_recorder_service.dart';
+import 'services/local_progress_store.dart';
+import 'services/speech_service.dart';
+import 'theme/app_theme.dart';
+import 'views/review_page.dart';
+import 'views/speaking_page.dart';
+import 'views/theme_library_page.dart';
+import 'views/today_page.dart';
+import 'views/translation_page.dart';
+
+class AppShell extends StatefulWidget {
+  const AppShell({
+    super.key,
+    this.audioRecorder,
+    this.audioPlayer,
+    this.speechClient,
+  });
+
+  final RecordingClient? audioRecorder;
+  final AudioPlaybackClient? audioPlayer;
+  final SpeechClient? speechClient;
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  final progressStore = const LocalProgressStore();
+
+  int index = 0;
+  LocalProgress progress = const LocalProgress.empty();
+  LocalLearningStats stats = const LocalLearningStats.empty();
+
+  @override
+  void initState() {
+    super.initState();
+    loadProgress();
+  }
+
+  Future<void> loadProgress() async {
+    final storedProgress = await progressStore.load().catchError(
+      (_) => const LocalProgress.empty(),
+    );
+    final storedStats = await progressStore.loadStats().catchError(
+      (_) => const LocalLearningStats.empty(),
+    );
+    if (!mounted) return;
+
+    setState(() {
+      progress = storedProgress;
+      stats = storedStats;
+    });
+  }
+
+  void goTo(int value) => setState(() => index = value);
+
+  Future<void> updateProgress(LocalProgress value) async {
+    setState(() => progress = value);
+    await progressStore.save(value).catchError((_) {});
+    final storedStats = await progressStore.loadStats().catchError(
+      (_) => const LocalLearningStats.empty(),
+    );
+    if (!mounted) return;
+
+    setState(() => stats = storedStats);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final completedMinutes = progress.completedMinutes;
+    final pages = [
+      TodayPage(
+        key: const ValueKey('today-page'),
+        completedMinutes: completedMinutes,
+        onStartSpeaking: () => goTo(2),
+        onChooseTheme: () => goTo(1),
+      ),
+      const ThemeLibraryPage(key: ValueKey('theme-library-page')),
+      SpeakingPage(
+        key: const ValueKey('speaking-page'),
+        audioRecorder: widget.audioRecorder,
+        audioPlayer: widget.audioPlayer,
+        recordingCompleted: progress.recordingCompleted,
+        dictationCompleted: progress.dictationCompleted,
+        recallCompleted: progress.recallCompleted,
+        onRecordingSaved: () =>
+            updateProgress(progress.copyWith(recordingCompleted: true)),
+        onDictationChecked: () =>
+            updateProgress(progress.copyWith(dictationCompleted: true)),
+        onRecallChecked: () =>
+            updateProgress(progress.copyWith(recallCompleted: true)),
+        onFinish: () => goTo(4),
+      ),
+      TranslationPage(
+        key: const ValueKey('translation-page'),
+        speechClient: widget.speechClient,
+      ),
+      ReviewPage(
+        key: const ValueKey('review-page'),
+        completedMinutes: completedMinutes,
+        stats: stats,
+        onRestart: () => goTo(0),
+        onDataImported: loadProgress,
+      ),
+    ];
+
+    return Scaffold(
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth < 430.0
+                ? constraints.maxWidth
+                : 430.0;
+
+            return Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: width,
+                height: constraints.maxHeight,
+                child: Stack(
+                  children: [
+                    Positioned.fill(child: pages[index]),
+                    const Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: 130,
+                      child: _BottomNavBackdrop(),
+                    ),
+                    Positioned(
+                      left: 18,
+                      right: 18,
+                      bottom: 14,
+                      child: _BottomNav(index: index, onSelect: goTo),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomNavBackdrop extends StatelessWidget {
+  const _BottomNavBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.page.withValues(alpha: 0),
+              AppColors.page.withValues(alpha: 0.96),
+              AppColors.page,
+            ],
+            stops: const [0, 0.38, 1],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomNav extends StatelessWidget {
+  const _BottomNav({required this.index, required this.onSelect});
+
+  final int index;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(26),
+        child: NavigationBar(
+          height: 72,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          selectedIndex: index,
+          onDestinationSelected: onSelect,
+          indicatorColor: AppColors.teal.withValues(alpha: 0.14),
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.calendar_month_outlined),
+              selectedIcon: Icon(Icons.calendar_month),
+              label: '今日',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.auto_awesome_outlined),
+              selectedIcon: Icon(Icons.auto_awesome),
+              label: '素材',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.mic_none),
+              selectedIcon: Icon(Icons.mic),
+              label: '跟读',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.translate_outlined),
+              selectedIcon: Icon(Icons.translate),
+              label: '翻译',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.trending_up),
+              selectedIcon: Icon(Icons.trending_up),
+              label: '复盘',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

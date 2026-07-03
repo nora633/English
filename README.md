@@ -1,6 +1,6 @@
 # 英语学习 App
 
-一款面向个人自用的英语学习 iOS App，目标是把兴趣内容变成每天 15 分钟能坚持完成的听说训练闭环。
+一款面向个人自用的英语学习 App，目标是把兴趣内容变成每天 15 分钟能坚持完成的听说训练闭环，并用一套 Flutter 代码同时支持 iPhone 和 Android。
 
 ## Product Goal
 
@@ -11,9 +11,9 @@
 
 ## MVP Direction
 
-第一版采用 iOS 原生 App + 轻后端：
+当前方向采用 Flutter 跨端 App + 轻后端：
 
-- iOS App 使用 SwiftUI。
+- 移动端使用 Flutter，统一维护 iOS 和 Android 前端代码。
 - 后端负责保护 AI API key、生成学习任务、处理语音转写与口语反馈。
 - 每日学习任务控制在 15 分钟。
 - 内容使用合法短片段、官方预览、公开视频链接或用户手动提供内容。
@@ -34,8 +34,24 @@
 - [版本路线图](docs/roadmap.md)
 - [GitHub 设置指南](docs/github-setup.md)
 - [iOS 静态原型](docs/ios-static-prototype.md)
+- [Flutter 跨端迁移](docs/flutter-cross-platform.md)
 
-## Run Prototype
+## Run Flutter Prototype
+
+```bash
+cd mobile
+flutter run
+```
+
+如需先做编译验证：
+
+```bash
+cd mobile
+flutter test
+flutter build web
+```
+
+## Run Legacy iOS Prototype
 
 需要安装完整 Xcode。打开 `EnglishLearningApp.xcodeproj`，选择 iPhone 模拟器运行 `EnglishLearningApp` scheme。
 

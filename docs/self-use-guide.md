@@ -4,6 +4,7 @@
 
 - 版本：v0.4.0
 - App 名称：外语岛
+- App 图标：已使用外语岛正式图标，覆盖 Android、iOS 和 Web。
 - 技术形态：Flutter 跨端 App，一套代码支持 Android 和 iPhone。
 - 当前定位：本地自用 MVP，先让自己开始每天练习。
 

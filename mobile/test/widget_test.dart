@@ -36,7 +36,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('去跟读练习'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('保存录音'));
+    await tester.ensureVisible(find.text('开始录音'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('开始录音'));
+    await tester.pump();
+    await tester.tap(find.text('停止录音'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('保存录音'));
     await tester.pumpAndSettle();
@@ -56,18 +60,19 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('去跟读练习'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.mic_none_rounded));
-    await tester.pumpAndSettle();
+    await tester.tap(find.text('开始录音'));
+    await tester.pump();
 
     expect(find.text('正在录音 00:00'), findsOneWidget);
-    expect(find.text('会申请麦克风权限，录音会先保存到本机临时文件。'), findsOneWidget);
+    expect(find.text('先播放原句，再录自己的声音；录音只保存在本机。'), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.stop_circle_outlined));
+    await tester.tap(find.text('停止录音'));
     await tester.pumpAndSettle();
 
-    expect(find.text('已生成一段录音草稿'), findsOneWidget);
+    expect(find.text('录音已停止，可以保存或回放'), findsOneWidget);
     expect(find.text('录音已保存：test-recording.m4a'), findsOneWidget);
     expect(find.text('播放录音'), findsOneWidget);
+    expect(find.text('保存录音'), findsOneWidget);
   });
 
   testWidgets('loads saved local progress when the app starts', (tester) async {

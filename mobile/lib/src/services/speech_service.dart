@@ -7,7 +7,9 @@ abstract class SpeechClient {
 }
 
 class SpeechService implements SpeechClient {
-  SpeechService({FlutterTts? tts}) : _tts = tts ?? FlutterTts();
+  SpeechService({FlutterTts? tts}) : _tts = tts ?? FlutterTts() {
+    _tts.awaitSpeakCompletion(true);
+  }
 
   final FlutterTts _tts;
 
@@ -17,6 +19,7 @@ class SpeechService implements SpeechClient {
 
     await _tts.stop();
     await _tts.setLanguage(locale);
+    await _tts.setVolume(1);
     await _tts.setSpeechRate(0.45);
     await _tts.setPitch(1);
     await _tts.speak(text);

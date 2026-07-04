@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/sample_data.dart';
 import '../services/audio_player_service.dart';
 import '../services/audio_recorder_service.dart';
+import '../services/speech_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 
@@ -18,10 +21,12 @@ class SpeakingPage extends StatefulWidget {
     required this.onFinish,
     this.audioRecorder,
     this.audioPlayer,
+    this.speechClient,
   });
 
   final RecordingClient? audioRecorder;
   final AudioPlaybackClient? audioPlayer;
+  final SpeechClient? speechClient;
   final bool? recordingCompleted;
   final bool? dictationCompleted;
   final bool? recallCompleted;
@@ -37,9 +42,12 @@ class SpeakingPage extends StatefulWidget {
 class _SpeakingPageState extends State<SpeakingPage> {
   late final RecordingClient audioRecorder;
   late final AudioPlaybackClient audioPlayer;
+  late final SpeechClient speechClient;
   final dictation = TextEditingController();
   final recall = TextEditingController();
+  Timer? recordingTimer;
   bool isRecording = false;
+  bool isPlayingTarget = false;
   bool isPlayingRecording = false;
   bool hasRecordingDraft = false;
   int recordingSeconds = 0;
@@ -52,13 +60,15 @@ class _SpeakingPageState extends State<SpeakingPage> {
     super.initState();
     audioRecorder = widget.audioRecorder ?? AudioRecorderService();
     audioPlayer = widget.audioPlayer ?? AudioPlayerService();
+    speechClient = widget.speechClient ?? SpeechService();
   }
 
   void saveRecording() {
+    if (recordingPath == null || isRecording) return;
+
     setState(() {
       isRecording = false;
       hasRecordingDraft = true;
-      recordingSeconds = recordingSeconds == 0 ? 8 : recordingSeconds;
       playbackError = null;
     });
     widget.onRecordingSaved();
@@ -75,6 +85,8 @@ class _SpeakingPageState extends State<SpeakingPage> {
   Future<void> startRecording() async {
     setState(() {
       isRecording = true;
+      isPlayingRecording = false;
+      isPlayingTarget = false;
       hasRecordingDraft = false;
       recordingSeconds = 0;
       recordingPath = null;
@@ -83,7 +95,10 @@ class _SpeakingPageState extends State<SpeakingPage> {
     });
 
     try {
+      await speechClient.stop();
+      await audioPlayer.stop();
       await audioRecorder.start();
+      startRecordingTimer();
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -96,15 +111,16 @@ class _SpeakingPageState extends State<SpeakingPage> {
   Future<void> stopRecording() async {
     try {
       final session = await audioRecorder.stop();
+      stopRecordingTimer();
       if (!mounted) return;
       setState(() {
         isRecording = false;
         hasRecordingDraft = session != null;
         recordingPath = session?.path;
-        recordingSeconds = recordingSeconds == 0 ? 8 : recordingSeconds;
         playbackError = null;
       });
     } catch (error) {
+      stopRecordingTimer();
       if (!mounted) return;
       setState(() {
         isRecording = false;
@@ -113,25 +129,70 @@ class _SpeakingPageState extends State<SpeakingPage> {
     }
   }
 
+  void startRecordingTimer() {
+    recordingTimer?.cancel();
+    recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || !isRecording) return;
+      setState(() => recordingSeconds += 1);
+    });
+  }
+
+  void stopRecordingTimer() {
+    recordingTimer?.cancel();
+    recordingTimer = null;
+  }
+
+  Future<void> playTargetSentence() async {
+    final text = SampleData.todayLesson.listeningLines.first;
+
+    try {
+      await audioPlayer.stop();
+      await speechClient.stop();
+      setState(() {
+        isPlayingTarget = true;
+        isPlayingRecording = false;
+        playbackError = null;
+      });
+      await speechClient.speak(text, locale: 'en-US');
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => playbackError = '当前设备无法朗读原句：$error');
+    }
+  }
+
+  Future<void> stopTargetSentence() async {
+    await speechClient.stop();
+    if (!mounted) return;
+    setState(() => isPlayingTarget = false);
+  }
+
   Future<void> playRecording() async {
     final path = recordingPath;
     if (path == null) return;
 
     setState(() {
       isPlayingRecording = true;
+      isPlayingTarget = false;
       playbackError = null;
     });
 
     try {
+      await speechClient.stop();
       await audioPlayer.play(path);
     } catch (error) {
       if (!mounted) return;
       setState(() => playbackError = error.toString());
-    } finally {
-      if (mounted) {
-        setState(() => isPlayingRecording = false);
-      }
     }
+  }
+
+  Future<void> stopPlayback() async {
+    await audioPlayer.stop();
+    await speechClient.stop();
+    if (!mounted) return;
+    setState(() {
+      isPlayingRecording = false;
+      isPlayingTarget = false;
+    });
   }
 
   void checkDictation() {
@@ -144,10 +205,12 @@ class _SpeakingPageState extends State<SpeakingPage> {
 
   @override
   void dispose() {
+    stopRecordingTimer();
     dictation.dispose();
     recall.dispose();
     audioRecorder.dispose();
     audioPlayer.dispose();
+    speechClient.stop();
     super.dispose();
   }
 
@@ -159,10 +222,11 @@ class _SpeakingPageState extends State<SpeakingPage> {
     final showRecordingFeedback = savedRecording || hasRecordingDraft;
     final checkedDictation = widget.dictationCompleted == true;
     final checkedRecall = widget.recallCompleted == true;
+    final durationText = recordingSeconds > 0 ? '$recordingSeconds 秒' : '本次';
     final recordingLabel = isRecording
         ? '正在录音 00:${recordingSeconds.toString().padLeft(2, '0')}'
         : hasRecordingDraft || savedRecording
-        ? '已生成一段录音草稿'
+        ? '录音已停止，可以保存或回放'
         : '点击麦克风开始跟读';
 
     return AppScrollPage(
@@ -195,9 +259,7 @@ class _SpeakingPageState extends State<SpeakingPage> {
                     : AppColors.teal,
                 onPressed: toggleRecording,
                 icon: Icon(
-                  savedRecording
-                      ? Icons.check_circle
-                      : isRecording
+                  isRecording
                       ? Icons.stop_circle_outlined
                       : Icons.mic_none_rounded,
                 ),
@@ -209,7 +271,7 @@ class _SpeakingPageState extends State<SpeakingPage> {
               ),
               const SizedBox(height: 6),
               const Text(
-                '会申请麦克风权限，录音会先保存到本机临时文件。',
+                '先播放原句，再录自己的声音；录音只保存在本机。',
                 style: AppText.muted,
                 textAlign: TextAlign.center,
               ),
@@ -230,29 +292,49 @@ class _SpeakingPageState extends State<SpeakingPage> {
                 children: [
                   Expanded(
                     child: SecondaryButton(
-                      icon: Icons.play_arrow,
-                      text: '播放原句',
-                      onPressed: () {},
+                      icon: isPlayingTarget ? Icons.stop : Icons.play_arrow,
+                      text: isPlayingTarget ? '停止原句' : '播放原句',
+                      onPressed: isPlayingTarget
+                          ? stopTargetSentence
+                          : playTargetSentence,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: PrimaryButton(
-                      icon: Icons.check,
-                      text: '保存录音',
-                      onPressed: saveRecording,
+                      icon: isRecording
+                          ? Icons.stop_circle_outlined
+                          : Icons.mic_none_rounded,
+                      text: isRecording ? '停止录音' : '开始录音',
+                      onPressed: toggleRecording,
                     ),
                   ),
                 ],
               ),
               if (recordingPath != null) ...[
                 const SizedBox(height: 10),
-                SecondaryButton(
-                  icon: isPlayingRecording
-                      ? Icons.hourglass_bottom
-                      : Icons.replay_rounded,
-                  text: isPlayingRecording ? '正在播放' : '播放录音',
-                  onPressed: playRecording,
+                Row(
+                  children: [
+                    Expanded(
+                      child: SecondaryButton(
+                        icon: isPlayingRecording
+                            ? Icons.stop
+                            : Icons.replay_rounded,
+                        text: isPlayingRecording ? '停止录音' : '播放录音',
+                        onPressed: isPlayingRecording
+                            ? stopPlayback
+                            : playRecording,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: PrimaryButton(
+                        icon: Icons.check,
+                        text: savedRecording ? '已保存' : '保存录音',
+                        onPressed: saveRecording,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ],
@@ -260,24 +342,22 @@ class _SpeakingPageState extends State<SpeakingPage> {
         ),
         if (showRecordingFeedback) ...[
           CardPanel(
-            title: '口语评分',
-            icon: Icons.speed,
+            title: '本地跟读记录',
+            icon: Icons.fact_check_outlined,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ScoreBar(label: '清晰度', value: score.clarity),
-                ScoreBar(label: '流利度', value: score.fluency),
-                ScoreBar(label: '完整度', value: score.completeness),
-                ScoreBar(label: '自然度', value: score.naturalness),
+                Text(
+                  '已记录一段$durationText跟读音频。当前自用版先保存练习状态，不做伪 AI 打分。',
+                  style: AppText.bodyLarge,
+                ),
+                const SizedBox(height: 10),
+                Text('后续接入 AI 服务后，这里再显示真实转写、发音评分和改进建议。', style: AppText.muted),
               ],
             ),
           ),
           CardPanel(
-            title: '转写文本',
-            icon: Icons.chat_bubble_outline,
-            child: Text(score.transcript),
-          ),
-          CardPanel(
-            title: '改进建议',
+            title: '今日复盘建议',
             icon: Icons.auto_fix_high,
             child: Column(
               children: [

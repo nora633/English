@@ -31,6 +31,11 @@ class LearningTheme {
     required this.sourceHint,
     required this.focus,
     required this.difficulty,
+    required this.previewTitle,
+    required this.previewDescription,
+    required this.sampleContent,
+    required this.practiceSentences,
+    required this.keyVocabulary,
   });
 
   final String title;
@@ -39,31 +44,11 @@ class LearningTheme {
   final String sourceHint;
   final String focus;
   final String difficulty;
-
-  String get mediaDescription {
-    return switch (kind) {
-      ContentKind.sitcom => '这里会展示情景剧短片段或官方预览，配合台词短摘录做精听。',
-      ContentKind.song => '这里会展示歌曲信息和合法短歌词片段，用来练连读、弱读和情绪表达。',
-      ContentKind.dailyLife => '这里会展示 AI 生成的生活场景图文对话。',
-      ContentKind.news => '这里会展示短新闻正文或官方来源链接，适合练主旨和细节。',
-      ContentKind.article => '这里会展示报刊文章摘录，适合练长句、正式词汇和观点表达。',
-    };
-  }
-
-  String get sampleContent {
-    return switch (kind) {
-      ContentKind.sitcom =>
-        'A: I was about to grab some coffee. Do you want anything?\nB: That makes sense. I could use one too.\nA: Do you want me to text you when I get there?',
-      ContentKind.song =>
-        'A short chorus-style excerpt will appear here, focused on rhythm, connected speech, and everyday emotional phrases.',
-      ContentKind.dailyLife =>
-        'You run into a neighbor downstairs. You are about to buy coffee and offer to bring something back.',
-      ContentKind.news =>
-        'City officials announced a new public transport plan on Monday. The plan aims to reduce commute times and improve service during rush hour.',
-      ContentKind.article =>
-        'For many learners, fluency is less about knowing rare words and more about using familiar words quickly, accurately, and naturally.',
-    };
-  }
+  final String previewTitle;
+  final String previewDescription;
+  final String sampleContent;
+  final List<String> practiceSentences;
+  final List<String> keyVocabulary;
 }
 
 class DailyLesson {

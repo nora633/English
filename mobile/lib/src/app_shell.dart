@@ -83,6 +83,7 @@ class _AppShellState extends State<AppShell> {
         key: const ValueKey('speaking-page'),
         audioRecorder: widget.audioRecorder,
         audioPlayer: widget.audioPlayer,
+        speechClient: widget.speechClient,
         recordingCompleted: progress.recordingCompleted,
         dictationCompleted: progress.dictationCompleted,
         recallCompleted: progress.recallCompleted,

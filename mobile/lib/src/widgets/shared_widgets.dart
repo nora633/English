@@ -232,9 +232,11 @@ class GrammarTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
+        color: AppColors.page,
         border: Border.all(color: AppColors.line),
         borderRadius: BorderRadius.circular(14),
       ),
@@ -242,11 +244,11 @@ class GrammarTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(point.pattern, style: AppText.emphasis),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(point.meaning, style: AppText.accent),
-          const SizedBox(height: 6),
-          Text(point.example),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
+          Text(point.example, style: AppText.bodyLarge),
+          const SizedBox(height: 8),
           Text(point.note, style: AppText.muted),
         ],
       ),

@@ -9,6 +9,19 @@ class SampleData {
       sourceHint: 'The Neighborhood 风格',
       focus: '自然开场、接话、轻松回应',
       difficulty: 'A2-B1',
+      previewTitle: '楼道里顺手打招呼',
+      previewDescription: '一个邻居正准备下楼买咖啡，顺口问对方要不要带点什么。适合练自然开场和轻松回应。',
+      sampleContent:
+          'A: I was about to grab some coffee. Do you want anything?\n'
+          'B: That makes sense. I could use one too.\n'
+          'A: Do you want me to text you when I get there?\n'
+          'B: Sure, thanks. I will be downstairs in ten minutes.',
+      practiceSentences: [
+        'I was about to grab some coffee. Do you want anything?',
+        'That makes sense. I could use one too.',
+        'Do you want me to text you when I get there?',
+      ],
+      keyVocabulary: ['grab', 'anything', 'text', 'downstairs'],
     ),
     LearningTheme(
       title: '家庭晚餐小插曲',
@@ -17,6 +30,19 @@ class SampleData {
       sourceHint: 'Young Sheldon 风格',
       focus: '解释原因、表达惊讶、补充细节',
       difficulty: 'B1',
+      previewTitle: '餐桌上解释一个小误会',
+      previewDescription: '家庭成员在晚餐时解释自己为什么迟到，语气轻松但需要补充细节。',
+      sampleContent:
+          'A: I did not mean to be late. I got held up after class.\n'
+          'B: You could have texted us.\n'
+          'A: I know. I thought I would be back in five minutes.\n'
+          'B: Well, dinner is still warm.',
+      practiceSentences: [
+        'I did not mean to be late.',
+        'I got held up after class.',
+        'I thought I would be back in five minutes.',
+      ],
+      keyVocabulary: ['held up', 'mean to', 'texted', 'still warm'],
     ),
     LearningTheme(
       title: '热门英文歌副歌表达',
@@ -25,6 +51,18 @@ class SampleData {
       sourceHint: '流行歌主题',
       focus: '情绪表达、连读、弱读',
       difficulty: 'A2-B1',
+      previewTitle: '副歌式情绪表达',
+      previewDescription: '不使用真实歌词，使用同类原创短句练节奏、连读和情绪表达。',
+      sampleContent:
+          'I keep running back to the same old place.\n'
+          'I know it is late, but I still feel awake.\n'
+          'If you call my name, I will find my way.',
+      practiceSentences: [
+        'I keep running back to the same old place.',
+        'I know it is late, but I still feel awake.',
+        'If you call my name, I will find my way.',
+      ],
+      keyVocabulary: ['running back', 'same old', 'awake', 'find my way'],
     ),
     LearningTheme(
       title: '咖啡店偶遇',
@@ -33,6 +71,19 @@ class SampleData {
       sourceHint: 'AI 生成生活场景',
       focus: '点单、寒暄、临时邀约',
       difficulty: 'A2',
+      previewTitle: '咖啡店排队时偶遇同事',
+      previewDescription: '适合练点单、简单寒暄和临时约时间，都是日常马上能用的句子。',
+      sampleContent:
+          'A: Hey, I did not expect to see you here.\n'
+          'B: Same here. I am grabbing coffee before work.\n'
+          'A: Do you have a minute after the meeting?\n'
+          'B: Sure. Text me when you are free.',
+      practiceSentences: [
+        'I did not expect to see you here.',
+        'I am grabbing coffee before work.',
+        'Text me when you are free.',
+      ],
+      keyVocabulary: ['expect', 'same here', 'before work', 'free'],
     ),
     LearningTheme(
       title: '短新闻听读',
@@ -41,6 +92,18 @@ class SampleData {
       sourceHint: '慢速新闻风格',
       focus: '抓主旨、数字、转折和因果',
       difficulty: 'B1-B2',
+      previewTitle: '城市通勤改善计划',
+      previewDescription: '一则原创慢速新闻稿，训练新闻里的数字、原因和影响。',
+      sampleContent:
+          'City officials announced a new public transport plan on Monday. '
+          'The plan aims to reduce commute times by adding more buses during rush hour. '
+          'Local residents welcomed the change, but some said the city should also improve weekend service.',
+      practiceSentences: [
+        'City officials announced a new public transport plan on Monday.',
+        'The plan aims to reduce commute times.',
+        'Some said the city should also improve weekend service.',
+      ],
+      keyVocabulary: ['officials', 'announced', 'commute', 'rush hour'],
     ),
     LearningTheme(
       title: '报刊观点精读',
@@ -49,6 +112,17 @@ class SampleData {
       sourceHint: '报纸/杂志评论风格',
       focus: '长句结构、观点表达、正式词汇',
       difficulty: 'B2-C1',
+      previewTitle: '为什么流利度来自熟词快用',
+      previewDescription: '原创观点段落，用来练正式表达、长句切分和观点复述。',
+      sampleContent:
+          'For many learners, fluency is less about knowing rare words and more about using familiar words quickly, accurately, and naturally. '
+          'A learner who can explain simple ideas under pressure often communicates better than one who only recognizes difficult vocabulary on paper.',
+      practiceSentences: [
+        'Fluency is less about knowing rare words.',
+        'It is more about using familiar words naturally.',
+        'Simple ideas under pressure still require practice.',
+      ],
+      keyVocabulary: ['fluency', 'rare words', 'accurately', 'under pressure'],
     ),
   ];
 

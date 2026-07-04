@@ -22,7 +22,7 @@ class EnglishLearningApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'English',
+      title: '外语岛',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.teal,

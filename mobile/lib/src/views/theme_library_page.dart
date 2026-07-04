@@ -77,9 +77,35 @@ class ThemeDetailPage extends StatelessWidget {
           ),
           children: [
             CardPanel(
-              title: theme.kind.label,
+              title: theme.previewTitle,
               icon: theme.kind.icon,
-              child: Text(theme.mediaDescription),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(theme.previewDescription, style: AppText.bodyLarge),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.subtle,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(theme.kind.icon, color: AppColors.teal),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _previewNotice(theme.kind),
+                            style: AppText.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
             CardPanel(
               title: theme.kind.contentTitle,
@@ -93,6 +119,29 @@ class ThemeDetailPage extends StatelessWidget {
                     '正式版只展示合法授权、官方预览、用户导入或用户手动粘贴的内容。',
                     style: AppText.muted,
                   ),
+                ],
+              ),
+            ),
+            CardPanel(
+              title: '可练句子',
+              icon: Icons.headphones,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final entry in theme.practiceSentences.indexed)
+                    NumberedLine(number: entry.$1 + 1, text: entry.$2),
+                ],
+              ),
+            ),
+            CardPanel(
+              title: '关键词',
+              icon: Icons.menu_book_outlined,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final word in theme.keyVocabulary)
+                    SmallChip(label: word),
                 ],
               ),
             ),
@@ -122,5 +171,15 @@ class ThemeDetailPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _previewNotice(ContentKind kind) {
+    return switch (kind) {
+      ContentKind.sitcom => '自用版先展示原创情景片段。后续可接入你手动导入的合法短片或官方预览链接。',
+      ContentKind.song => '为避免版权问题，当前展示同类原创歌词式短句，不直接内置真实歌曲歌词。',
+      ContentKind.dailyLife => '生活场景使用本地原创图文对话，适合马上跟读和默写。',
+      ContentKind.news => '新闻稿为原创慢速新闻风格文本，先练结构和听读方法。',
+      ContentKind.article => '报刊读物为原创观点段落，先练长句拆分和正式表达。',
+    };
   }
 }

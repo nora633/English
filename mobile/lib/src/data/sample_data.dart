@@ -223,6 +223,25 @@ class SampleData {
     ],
   );
 
+  static DailyLesson lessonForTheme(LearningTheme theme) {
+    final lines = _listeningLinesFor(theme);
+    final keywords = theme.keyVocabulary
+        .take(4)
+        .map((word) => _keywordFor(word, theme))
+        .toList();
+
+    return DailyLesson(
+      title: '今日 15 分钟听说训练',
+      durationMinutes: 15,
+      completedMinutes: 0,
+      theme: theme,
+      keyWords: keywords.isEmpty ? todayLesson.keyWords : keywords,
+      grammarPoints: _grammarFor(theme),
+      targetChunks: theme.practiceSentences.take(3).toList(),
+      listeningLines: lines,
+    );
+  }
+
   static const speakingScore = SpeakingScore(
     clarity: 82,
     fluency: 76,
@@ -253,4 +272,253 @@ class SampleData {
       keywords: ['grab', 'anything', 'downstairs', 'want me to'],
     ),
   );
+
+  static List<String> _listeningLinesFor(LearningTheme theme) {
+    return switch (theme.title) {
+      '邻里寒暄' => todayLesson.listeningLines,
+      '家庭晚餐小插曲' => const [
+        'I did not mean to be late.',
+        'I got held up after class.',
+        'You could have texted us.',
+        'I thought I would be back in five minutes.',
+        'Well, dinner is still warm.',
+      ],
+      '热门英文歌副歌表达' => const [
+        'I keep running back to the same old place.',
+        'I know it is late, but I still feel awake.',
+        'If you call my name, I will find my way.',
+        'I do not want to lose this feeling tonight.',
+        'We can take it slow and make it right.',
+      ],
+      '咖啡店偶遇' => const [
+        'I did not expect to see you here.',
+        'I am grabbing coffee before work.',
+        'Do you have a minute after the meeting?',
+        'Text me when you are free.',
+        'Maybe we can catch up for ten minutes.',
+      ],
+      '短新闻听读' => const [
+        'City officials announced a new public transport plan on Monday.',
+        'The plan aims to reduce commute times during rush hour.',
+        'More buses will be added to several busy routes.',
+        'Local residents welcomed the change.',
+        'Some said the city should also improve weekend service.',
+      ],
+      '报刊观点精读' => const [
+        'Fluency is less about knowing rare words.',
+        'It is more about using familiar words quickly and naturally.',
+        'Simple ideas under pressure still require practice.',
+        'Many learners recognize difficult vocabulary on paper.',
+        'Real communication depends on words you can use right away.',
+      ],
+      _ => [
+        ...theme.practiceSentences,
+        ...todayLesson.listeningLines,
+      ].take(5).toList(),
+    };
+  }
+
+  static KeyWord _keywordFor(String word, LearningTheme theme) {
+    final data = switch (word) {
+      'held up' => (
+        phonetic: '/held ʌp/',
+        meaning: '被耽搁',
+        usage: '解释自己迟到或事情被拖住',
+        example: 'I got held up after class.',
+        root: 'hold 表示“抓住/拖住”，held up 就是被事情拖住。',
+        memory: '想象有人把你拦住，所以你没有按时到。',
+        confusing: 'held up 强调被耽搁；late 只是结果。',
+      ),
+      'mean to' => (
+        phonetic: '/miːn tuː/',
+        meaning: '有意要做某事',
+        usage: '解释“我不是故意的”',
+        example: 'I did not mean to be late.',
+        root: 'mean 有“意思/意图”，mean to 就是“打算”。',
+        memory: '把它记成“我的意思不是要这样”。',
+        confusing: 'mean to 后接动词原形；mean doing 表示“意味着”。',
+      ),
+      'running back' => (
+        phonetic: '/ˈrʌnɪŋ bæk/',
+        meaning: '一次次回到',
+        usage: '表达情绪或习惯反复',
+        example: 'I keep running back to the same old place.',
+        root: 'run back 字面是跑回去，口语里可指反复回到某状态。',
+        memory: '像副歌一样反复回到同一句旋律。',
+        confusing: 'running back 更有画面感；returning 更正式。',
+      ),
+      'same old' => (
+        phonetic: '/seɪm oʊld/',
+        meaning: '老样子 / 还是那样',
+        usage: '轻松描述重复的状态',
+        example: 'I keep running back to the same old place.',
+        root: 'same 是相同，old 是旧的，合起来就是“老一套”。',
+        memory: '想到“还是那个老地方”。',
+        confusing: 'same old 常带一点口语感和情绪。',
+      ),
+      'expect' => (
+        phonetic: '/ɪkˈspekt/',
+        meaning: '预料 / 期待',
+        usage: '表达没想到会遇见某人',
+        example: 'I did not expect to see you here.',
+        root: 'ex- 向外，spect 看，expect 像“向外看着等”。',
+        memory: '你本来没往这个方向看，所以没想到。',
+        confusing: 'expect 是预料；hope 是希望。',
+      ),
+      'same here' => (
+        phonetic: '/seɪm hɪr/',
+        meaning: '我也是',
+        usage: '自然接话，表示同感',
+        example: 'Same here. I am grabbing coffee before work.',
+        root: 'same here 字面是“这里也一样”。',
+        memory: '对方说一个状态，你把它接到自己这里。',
+        confusing: 'same here 比 me too 更完整一点，适合回应整句话。',
+      ),
+      'officials' => (
+        phonetic: '/əˈfɪʃəlz/',
+        meaning: '官员 / 官方人员',
+        usage: '新闻稿里说明消息来源',
+        example: 'City officials announced a new public transport plan.',
+        root: 'office 办公机构，official 是官方人员。',
+        memory: '新闻里“谁宣布”，经常是 officials。',
+        confusing: 'official 作名词是官员，作形容词是官方的。',
+      ),
+      'commute' => (
+        phonetic: '/kəˈmjuːt/',
+        meaning: '通勤',
+        usage: '新闻和日常都常见',
+        example: 'The plan aims to reduce commute times.',
+        root: 'commute 表示规律往返，常指上下班路程。',
+        memory: '每天公司和家之间来回，就是 commute。',
+        confusing: 'commute 是通勤；travel 范围更大。',
+      ),
+      'fluency' => (
+        phonetic: '/ˈfluːənsi/',
+        meaning: '流利度',
+        usage: '讨论语言能力时常用',
+        example: 'Fluency is less about knowing rare words.',
+        root: 'flu 像 flow，强调语言流动起来。',
+        memory: '话能像水一样流出来，就是 fluency。',
+        confusing: 'fluency 偏流畅；accuracy 偏准确。',
+      ),
+      'under pressure' => (
+        phonetic: '/ˈʌndər ˈpreʃər/',
+        meaning: '在压力下',
+        usage: '描述真实交流场景',
+        example: 'Simple ideas under pressure still require practice.',
+        root: 'pressure 是压力，under pressure 就是在压力之下。',
+        memory: '考试、开会、对话卡壳时都算 under pressure。',
+        confusing: 'under pressure 强调外部压力；nervous 是自己的紧张感。',
+      ),
+      _ => (
+        phonetic: '',
+        meaning: '本素材中的关键表达',
+        usage: theme.focus,
+        example: theme.practiceSentences.isEmpty
+            ? theme.sampleContent
+            : theme.practiceSentences.first,
+        root: '先把它放回完整句子里记，不孤立背单词。',
+        memory: '把这个表达和“${theme.previewTitle}”这个场景绑定。',
+        confusing: '优先记它在今天句子里的用法，再拓展其它意思。',
+      ),
+    };
+
+    return KeyWord(
+      word: word,
+      phonetic: data.phonetic,
+      meaning: data.meaning,
+      usage: data.usage,
+      example: data.example,
+      priority: '必练',
+      wordRoot: data.root,
+      memoryHint: data.memory,
+      collocations: _collocationsFor(word),
+      relatedWords: const [],
+      confusingPoint: data.confusing,
+    );
+  }
+
+  static List<String> _collocationsFor(String word) {
+    return switch (word) {
+      'grab' => const ['grab coffee', 'grab lunch', 'grab a seat'],
+      'anything' => const ['need anything', 'want anything', 'anything else'],
+      'text' => const ['text me', 'text you later', 'send a text'],
+      'held up' => const [
+        'get held up',
+        'held up at work',
+        'held up after class',
+      ],
+      'expect' => const ['expect to see', 'did not expect', 'as expected'],
+      'commute' => const ['commute time', 'morning commute', 'daily commute'],
+      'fluency' => const [
+        'build fluency',
+        'speaking fluency',
+        'fluency practice',
+      ],
+      _ => [word],
+    };
+  }
+
+  static List<GrammarPoint> _grammarFor(LearningTheme theme) {
+    return switch (theme.stage) {
+      LearningStage.daily => const [
+        GrammarPoint(
+          pattern: 'I did not expect to + 动词原形',
+          meaning: '我没想到会做/看到某事',
+          example: 'I did not expect to see you here.',
+          note: '偶遇、惊讶、轻松开场都很好用。',
+        ),
+        GrammarPoint(
+          pattern: 'Do you have a minute?',
+          meaning: '你有空吗？',
+          example: 'Do you have a minute after the meeting?',
+          note: '比 Are you free 更自然、轻一点。',
+        ),
+      ],
+      LearningStage.media => const [
+        GrammarPoint(
+          pattern: 'I did not mean to + 动词原形',
+          meaning: '我不是故意要做某事',
+          example: 'I did not mean to be late.',
+          note: '解释误会时很常用。',
+        ),
+        GrammarPoint(
+          pattern: 'I keep + 动词 ing',
+          meaning: '我一直反复做某事',
+          example: 'I keep running back to the same old place.',
+          note: '适合表达反复发生的动作或情绪。',
+        ),
+      ],
+      LearningStage.news => const [
+        GrammarPoint(
+          pattern: 'aim to + 动词原形',
+          meaning: '旨在做某事',
+          example: 'The plan aims to reduce commute times.',
+          note: '新闻稿中解释目的很常见。',
+        ),
+        GrammarPoint(
+          pattern: 'but some said...',
+          meaning: '转折并补充不同观点',
+          example: 'Some said the city should also improve weekend service.',
+          note: '训练新闻里的多方意见。',
+        ),
+      ],
+      LearningStage.reading => const [
+        GrammarPoint(
+          pattern: 'less about A and more about B',
+          meaning: '与其说是 A，不如说是 B',
+          example:
+              'Fluency is less about knowing rare words and more about using familiar words naturally.',
+          note: '报刊观点里很适合表达判断和取舍。',
+        ),
+        GrammarPoint(
+          pattern: 'A learner who... often...',
+          meaning: '用 who 引导从句补充说明对象',
+          example:
+              'A learner who can explain simple ideas often communicates better.',
+          note: '长句拆分时先找主干，再看 who 补充谁。',
+        ),
+      ],
+    };
+  }
 }

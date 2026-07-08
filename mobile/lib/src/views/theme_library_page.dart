@@ -6,7 +6,9 @@ import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 
 class ThemeLibraryPage extends StatefulWidget {
-  const ThemeLibraryPage({super.key});
+  const ThemeLibraryPage({super.key, required this.onUseTheme});
+
+  final ValueChanged<LearningTheme> onUseTheme;
 
   @override
   State<ThemeLibraryPage> createState() => _ThemeLibraryPageState();
@@ -49,7 +51,10 @@ class _ThemeLibraryPageState extends State<ThemeLibraryPage> {
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => ThemeDetailPage(theme: theme),
+                  builder: (_) => ThemeDetailPage(
+                    theme: theme,
+                    onUseTheme: widget.onUseTheme,
+                  ),
                 ),
               );
             },
@@ -60,9 +65,14 @@ class _ThemeLibraryPageState extends State<ThemeLibraryPage> {
 }
 
 class ThemeDetailPage extends StatelessWidget {
-  const ThemeDetailPage({super.key, required this.theme});
+  const ThemeDetailPage({
+    super.key,
+    required this.theme,
+    required this.onUseTheme,
+  });
 
   final LearningTheme theme;
+  final ValueChanged<LearningTheme> onUseTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -156,7 +166,10 @@ class ThemeDetailPage extends StatelessWidget {
                   PrimaryButton(
                     icon: Icons.auto_awesome,
                     text: '生成今日 15 分钟练习',
-                    onPressed: () {},
+                    onPressed: () {
+                      onUseTheme(theme);
+                      Navigator.of(context).pop();
+                    },
                   ),
                   const SizedBox(height: 8),
                   SecondaryButton(

@@ -126,7 +126,7 @@ class LocalDailyLessonService {
     required LearningStage preferredStage,
   }) {
     if (stats.savedTroubleSpots.contains('anything')) {
-      return SampleData.todayLesson;
+      return SampleData.lessonForTheme(SampleData.themes.first);
     }
 
     final theme = SampleData.themes.firstWhere(
@@ -134,7 +134,11 @@ class LocalDailyLessonService {
       orElse: () => SampleData.themes.first,
     );
 
-    return SampleData.todayLesson.copyWith(theme: theme);
+    return generateFromTheme(theme);
+  }
+
+  DailyLesson generateFromTheme(LearningTheme theme) {
+    return SampleData.lessonForTheme(theme);
   }
 }
 

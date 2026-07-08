@@ -99,6 +99,22 @@ class _AppShellState extends State<AppShell> {
     });
   }
 
+  Future<void> useThemeAsDailyLesson(LearningTheme theme) async {
+    final generated = const LocalDailyLessonService().generateFromTheme(theme);
+    final response = DailyLessonResponse(
+      lesson: generated,
+      source: DailyLessonSource.local,
+    );
+    await lessonStore.save(response).catchError((_) {});
+    if (!mounted) return;
+
+    setState(() {
+      lesson = generated;
+      lessonSource = response.source;
+      index = 0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final completedMinutes = progress.completedMinutes;
@@ -113,7 +129,10 @@ class _AppShellState extends State<AppShell> {
         onChooseTheme: () => goTo(1),
         onGenerateLesson: generateDailyLesson,
       ),
-      const ThemeLibraryPage(key: ValueKey('theme-library-page')),
+      ThemeLibraryPage(
+        key: const ValueKey('theme-library-page'),
+        onUseTheme: useThemeAsDailyLesson,
+      ),
       SpeakingPage(
         key: const ValueKey('speaking-page'),
         audioRecorder: widget.audioRecorder,

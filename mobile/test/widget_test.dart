@@ -1,4 +1,5 @@
 import 'package:english_learning_app/main.dart';
+import 'package:english_learning_app/src/data/sample_data.dart';
 import 'package:english_learning_app/src/models/learning_models.dart';
 import 'package:english_learning_app/src/services/audio_player_service.dart';
 import 'package:english_learning_app/src/services/audio_recorder_service.dart';
@@ -307,6 +308,19 @@ void main() {
     expect(lesson.keyWords.first.word, 'heading out');
   });
 
+  test('local daily lesson uses selected theme content', () {
+    final service = const LocalDailyLessonService();
+    final lesson = service.generateFromTheme(SampleData.themes[1]);
+
+    expect(lesson.theme.title, '家庭晚餐小插曲');
+    expect(lesson.listeningLines, contains('I got held up after class.'));
+    expect(
+      lesson.listeningLines,
+      isNot(contains('I was about to grab some coffee. Do you want anything?')),
+    );
+    expect(lesson.keyWords.map((word) => word.word), contains('held up'));
+  });
+
   testWidgets('opens keyword detail from today word card', (tester) async {
     await tester.pumpWidget(testApp());
     await tester.pumpAndSettle();
@@ -478,6 +492,36 @@ void main() {
 
     expect(find.text('来源：本地推荐'), findsOneWidget);
     expect(find.text('精听句子'), findsOneWidget);
+  });
+
+  testWidgets('uses material detail as today lesson', (tester) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('素材'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('家庭晚餐小插曲'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('生成今日 15 分钟练习'),
+      320,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('生成今日 15 分钟练习'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('今日学习'), findsOneWidget);
+    expect(find.textContaining('家庭晚餐小插曲'), findsWidgets);
+    await tester.scrollUntilVisible(
+      find.text('I got held up after class.'),
+      320,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('I got held up after class.'), findsWidgets);
   });
 }
 

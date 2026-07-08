@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../data/sample_data.dart';
 import '../services/local_progress_store.dart';
+import '../services/review_queue_store.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 
@@ -11,12 +14,16 @@ class ReviewPage extends StatefulWidget {
     super.key,
     required this.completedMinutes,
     required this.stats,
+    required this.reviewQueue,
+    required this.onMarkReviewItemMastered,
     required this.onRestart,
     required this.onDataImported,
   });
 
   final int completedMinutes;
   final LocalLearningStats stats;
+  final List<ReviewQueueItem> reviewQueue;
+  final Future<void> Function(String id) onMarkReviewItemMastered;
   final VoidCallback onRestart;
   final Future<void> Function() onDataImported;
 
@@ -26,18 +33,28 @@ class ReviewPage extends StatefulWidget {
 
 class _ReviewPageState extends State<ReviewPage> {
   final backupController = TextEditingController();
+  final searchController = TextEditingController();
   final progressStore = const LocalProgressStore();
+  final reviewQueueStore = const ReviewQueueStore();
   String? backupCode;
   String? backupMessage;
+  String searchQuery = '';
 
   @override
   void dispose() {
     backupController.dispose();
+    searchController.dispose();
     super.dispose();
   }
 
   Future<void> exportBackup() async {
-    final exported = await progressStore.exportBackup();
+    final progressBackup = await progressStore.exportBackup();
+    final decoded = jsonDecode(progressBackup);
+    final reviewQueue = await reviewQueueStore.exportItems();
+    final exported = jsonEncode({
+      if (decoded is Map<String, dynamic>) ...decoded,
+      'reviewQueue': reviewQueue,
+    });
     if (!mounted) return;
 
     setState(() {
@@ -48,7 +65,11 @@ class _ReviewPageState extends State<ReviewPage> {
 
   Future<void> importBackup() async {
     try {
+      final decoded = jsonDecode(backupController.text.trim());
       await progressStore.importBackup(backupController.text);
+      if (decoded is Map<String, dynamic>) {
+        await reviewQueueStore.importItems(decoded['reviewQueue']);
+      }
       await widget.onDataImported();
       if (!mounted) return;
 
@@ -71,6 +92,13 @@ class _ReviewPageState extends State<ReviewPage> {
     final reviewExpression = widget.stats.savedTroubleSpots.isNotEmpty
         ? widget.stats.savedTroubleSpots.first
         : 'Do you want me to...?';
+    final visibleReviewItems = reviewQueueStore.search(
+      widget.reviewQueue,
+      searchQuery,
+    );
+    final masteredCount = widget.reviewQueue
+        .where((item) => item.mastered)
+        .length;
 
     return AppScrollPage(
       title: '学习复盘',
@@ -119,6 +147,52 @@ class _ReviewPageState extends State<ReviewPage> {
                       SmallChip(label: item),
                   ],
                 ),
+        ),
+        CardPanel(
+          title: '词块复习',
+          icon: Icons.repeat,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  SmallChip(label: '待复习 ${visibleReviewItems.length} 个'),
+                  SmallChip(label: '已掌握 $masteredCount 个'),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: searchController,
+                onChanged: (value) => setState(() => searchQuery = value),
+                decoration: InputDecoration(
+                  hintText: '搜索练过的词块、句子或素材',
+                  prefixIcon: const Icon(Icons.search),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.line),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (visibleReviewItems.isEmpty)
+                const Text(
+                  '完成跟读、听写或默写后，今日关键词、词块和精听句会进入这里。',
+                  style: AppText.muted,
+                )
+              else
+                for (final item in visibleReviewItems.take(10))
+                  _ReviewQueueTile(
+                    item: item,
+                    onMastered: () async {
+                      await widget.onMarkReviewItemMastered(item.id);
+                    },
+                  ),
+            ],
+          ),
         ),
         CardPanel(
           title: '明日推荐',
@@ -303,6 +377,57 @@ class _ExpressionStatusRow extends StatelessWidget {
           SmallChip(label: label),
           const SizedBox(width: 10),
           Expanded(child: Text(text, style: AppText.emphasis)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReviewQueueTile extends StatelessWidget {
+  const _ReviewQueueTile({required this.item, required this.onMastered});
+
+  final ReviewQueueItem item;
+  final Future<void> Function() onMastered;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.page,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SmallChip(label: item.kind.label),
+              const SizedBox(width: 8),
+              Expanded(child: Text(item.text, style: AppText.emphasis)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(item.note, style: AppText.accent),
+          const SizedBox(height: 6),
+          Text(item.themeTitle, style: AppText.muted),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Text('复习 ${item.reviewCount} 次', style: AppText.muted),
+              ),
+              TextButton.icon(
+                onPressed: onMastered,
+                icon: const Icon(Icons.check_circle_outline),
+                label: const Text('标记掌握'),
+              ),
+            ],
+          ),
         ],
       ),
     );

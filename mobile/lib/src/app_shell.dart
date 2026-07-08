@@ -8,6 +8,7 @@ import 'services/custom_material_store.dart';
 import 'services/daily_lesson_service.dart';
 import 'services/local_progress_store.dart';
 import 'services/material_activity_store.dart';
+import 'services/review_queue_store.dart';
 import 'services/speech_service.dart';
 import 'theme/app_theme.dart';
 import 'views/review_page.dart';
@@ -38,11 +39,13 @@ class _AppShellState extends State<AppShell> {
   final lessonGateway = const DailyLessonGateway();
   final materialStore = const MaterialActivityStore();
   final customMaterialStore = const CustomMaterialStore();
+  final reviewQueueStore = const ReviewQueueStore();
 
   int index = 0;
   LocalProgress progress = const LocalProgress.empty();
   LocalLearningStats stats = const LocalLearningStats.empty();
   MaterialActivityState materialState = const MaterialActivityState.empty();
+  List<ReviewQueueItem> reviewQueue = const [];
   List<LearningTheme> customThemes = const [];
   DailyLesson lesson = SampleData.todayLesson;
   DailyLessonSource lessonSource = DailyLessonSource.local;
@@ -68,12 +71,16 @@ class _AppShellState extends State<AppShell> {
     final storedCustomThemes = await customMaterialStore.load().catchError(
       (_) => const <LearningTheme>[],
     );
+    final storedReviewQueue = await reviewQueueStore.load().catchError(
+      (_) => const <ReviewQueueItem>[],
+    );
     if (!mounted) return;
 
     setState(() {
       progress = storedProgress;
       stats = storedStats;
       materialState = storedMaterialState;
+      reviewQueue = storedReviewQueue;
       customThemes = storedCustomThemes;
       if (storedLesson != null) {
         lesson = storedLesson.lesson;
@@ -87,12 +94,18 @@ class _AppShellState extends State<AppShell> {
   Future<void> updateProgress(LocalProgress value) async {
     setState(() => progress = value);
     await progressStore.save(value).catchError((_) {});
+    final storedReviewQueue = await reviewQueueStore
+        .addLesson(lesson)
+        .catchError((_) => reviewQueue);
     final storedStats = await progressStore.loadStats().catchError(
       (_) => const LocalLearningStats.empty(),
     );
     if (!mounted) return;
 
-    setState(() => stats = storedStats);
+    setState(() {
+      stats = storedStats;
+      reviewQueue = storedReviewQueue;
+    });
   }
 
   Future<void> generateDailyLesson() async {
@@ -149,6 +162,13 @@ class _AppShellState extends State<AppShell> {
     setState(() => customThemes = nextThemes);
   }
 
+  Future<void> markReviewItemMastered(String id) async {
+    final nextQueue = await reviewQueueStore.markMastered(id);
+    if (!mounted) return;
+
+    setState(() => reviewQueue = nextQueue);
+  }
+
   @override
   Widget build(BuildContext context) {
     final completedMinutes = progress.completedMinutes;
@@ -196,6 +216,8 @@ class _AppShellState extends State<AppShell> {
         key: const ValueKey('review-page'),
         completedMinutes: completedMinutes,
         stats: stats,
+        reviewQueue: reviewQueue,
+        onMarkReviewItemMastered: markReviewItemMastered,
         onRestart: () => goTo(0),
         onDataImported: loadProgress,
       ),

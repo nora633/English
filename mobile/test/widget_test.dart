@@ -8,6 +8,7 @@ import 'package:english_learning_app/src/services/daily_lesson_service.dart';
 import 'package:english_learning_app/src/services/exercise_check_service.dart';
 import 'package:english_learning_app/src/services/local_progress_store.dart';
 import 'package:english_learning_app/src/services/material_activity_store.dart';
+import 'package:english_learning_app/src/services/review_queue_store.dart';
 import 'package:english_learning_app/src/services/speech_service.dart';
 import 'package:english_learning_app/src/services/translation_service.dart';
 import 'package:flutter/material.dart';
@@ -387,6 +388,42 @@ void main() {
     expect(loaded.single.sampleContent, contains('gate B12'));
   });
 
+  test('review queue stores lesson expressions and supports mastery', () async {
+    final store = ReviewQueueStore(now: () => DateTime(2026, 7, 8, 9));
+
+    final added = await store.addLesson(SampleData.todayLesson);
+    expect(added.map((item) => item.text), contains('grab'));
+    expect(added.map((item) => item.text), contains('I was about to...'));
+    expect(
+      added.map((item) => item.text),
+      contains('I was about to grab some coffee. Do you want anything?'),
+    );
+
+    final searched = store.search(added, 'grab');
+    expect(searched, isNotEmpty);
+    expect(searched.every((item) => item.mastered == false), isTrue);
+
+    final mastered = await store.markMastered(searched.first.id);
+    expect(
+      mastered.firstWhere((item) => item.id == searched.first.id).mastered,
+      isTrue,
+    );
+  });
+
+  test('review queue can be exported and imported', () async {
+    final sourceStore = ReviewQueueStore(now: () => DateTime(2026, 7, 8, 9));
+    await sourceStore.addLesson(SampleData.todayLesson);
+    final exported = await sourceStore.exportItems();
+
+    SharedPreferences.setMockInitialValues({});
+    const targetStore = ReviewQueueStore();
+    await targetStore.importItems(exported);
+    final imported = await targetStore.load();
+
+    expect(imported.map((item) => item.text), contains('grab'));
+    expect(imported.map((item) => item.text), contains('I was about to...'));
+  });
+
   test('local daily recommendation avoids recently used materials', () {
     final service = const LocalDailyLessonService();
     final lesson = service.generate(
@@ -500,6 +537,45 @@ void main() {
       expect(find.text('未接云端：不同手机之间不会自动同步。'), findsOneWidget);
     },
   );
+
+  testWidgets('adds completed lesson expressions to review queue', (
+    tester,
+  ) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('跟读'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('开始录音'));
+    await tester.pump();
+    await tester.tap(find.text('停止录音'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('保存录音'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('保存录音'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('复盘'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('词块复习'),
+      360,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('词块复习'), findsOneWidget);
+    expect(find.textContaining('待复习'), findsWidgets);
+    expect(find.text('grab'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).first, 'about');
+    await tester.pumpAndSettle();
+    expect(find.text('I was about to...'), findsOneWidget);
+
+    await tester.tap(find.text('标记掌握').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('已掌握'), findsWidgets);
+  });
 
   testWidgets('translates Chinese into English and Korean variants', (
     tester,

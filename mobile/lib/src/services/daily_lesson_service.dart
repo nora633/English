@@ -38,6 +38,7 @@ class DailyLessonGateway {
   Future<DailyLessonResponse> generate({
     required LocalLearningStats stats,
     MaterialActivityState materialState = const MaterialActivityState.empty(),
+    List<LearningTheme> availableThemes = SampleData.themes,
     LearningStage preferredStage = LearningStage.daily,
   }) async {
     if (remote.isConfigured) {
@@ -45,6 +46,7 @@ class DailyLessonGateway {
         final lesson = await remote.generate(
           stats: stats,
           materialState: materialState,
+          availableThemes: availableThemes,
           preferredStage: preferredStage,
         );
         return DailyLessonResponse(
@@ -56,6 +58,7 @@ class DailyLessonGateway {
           lesson: local.generate(
             stats: stats,
             materialState: materialState,
+            availableThemes: availableThemes,
             preferredStage: preferredStage,
           ),
           source: DailyLessonSource.localFallback,
@@ -67,6 +70,7 @@ class DailyLessonGateway {
       lesson: local.generate(
         stats: stats,
         materialState: materialState,
+        availableThemes: availableThemes,
         preferredStage: preferredStage,
       ),
       source: DailyLessonSource.local,
@@ -88,6 +92,7 @@ class RemoteDailyLessonService {
   Future<DailyLesson> generate({
     required LocalLearningStats stats,
     MaterialActivityState materialState = const MaterialActivityState.empty(),
+    List<LearningTheme> availableThemes = SampleData.themes,
     required LearningStage preferredStage,
   }) async {
     final endpoint = Uri.parse(
@@ -113,6 +118,16 @@ class RemoteDailyLessonService {
           ],
           'favoriteMaterials': materialState.favoriteTitles,
           'recentMaterials': materialState.recentUsedTitles(limit: 5),
+          'availableMaterials': [
+            for (final theme in availableThemes)
+              {
+                'title': theme.title,
+                'stage': theme.stage.name,
+                'kind': theme.kind.name,
+                'sourceHint': theme.sourceHint,
+                'focus': theme.focus,
+              },
+          ],
         }),
       );
 
@@ -138,6 +153,7 @@ class LocalDailyLessonService {
   DailyLesson generate({
     required LocalLearningStats stats,
     MaterialActivityState materialState = const MaterialActivityState.empty(),
+    List<LearningTheme> availableThemes = SampleData.themes,
     required LearningStage preferredStage,
   }) {
     if (stats.savedTroubleSpots.contains('anything') &&
@@ -148,6 +164,7 @@ class LocalDailyLessonService {
     final theme = _pickTheme(
       preferredStage: preferredStage,
       materialState: materialState,
+      availableThemes: availableThemes,
     );
 
     return generateFromTheme(theme);
@@ -160,11 +177,15 @@ class LocalDailyLessonService {
   LearningTheme _pickTheme({
     required LearningStage preferredStage,
     required MaterialActivityState materialState,
+    required List<LearningTheme> availableThemes,
   }) {
-    final stageThemes = SampleData.themes
+    final themes = availableThemes.isEmpty
+        ? SampleData.themes
+        : availableThemes;
+    final stageThemes = themes
         .where((item) => item.stage == preferredStage)
         .toList();
-    final candidates = stageThemes.isEmpty ? SampleData.themes : stageThemes;
+    final candidates = stageThemes.isEmpty ? themes : stageThemes;
     final recentTitles = materialState.recentUsedTitles().toSet();
     final fresh = candidates
         .where((theme) => !recentTitles.contains(theme.title))

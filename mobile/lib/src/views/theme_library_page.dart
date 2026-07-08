@@ -10,13 +10,17 @@ class ThemeLibraryPage extends StatefulWidget {
   const ThemeLibraryPage({
     super.key,
     required this.materialState,
+    required this.customThemes,
     required this.onUseTheme,
     required this.onToggleFavorite,
+    required this.onSaveCustomTheme,
   });
 
   final MaterialActivityState materialState;
+  final List<LearningTheme> customThemes;
   final Future<void> Function(LearningTheme theme) onUseTheme;
   final Future<void> Function(LearningTheme theme) onToggleFavorite;
+  final Future<void> Function(LearningTheme theme) onSaveCustomTheme;
 
   @override
   State<ThemeLibraryPage> createState() => _ThemeLibraryPageState();
@@ -27,7 +31,8 @@ class _ThemeLibraryPageState extends State<ThemeLibraryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final themes = SampleData.themes
+    final allThemes = [...SampleData.themes, ...widget.customThemes];
+    final themes = allThemes
         .where((theme) => stage == null || theme.stage == stage)
         .toList();
 
@@ -54,6 +59,17 @@ class _ThemeLibraryPageState extends State<ThemeLibraryPage> {
         ),
         const SizedBox(height: 4),
         _MaterialOverview(state: widget.materialState),
+        _CustomMaterialEntry(
+          customCount: widget.customThemes.length,
+          onCreate: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    CustomMaterialPage(onSave: widget.onSaveCustomTheme),
+              ),
+            );
+          },
+        ),
         for (final theme in themes)
           ThemeTile(
             theme: theme,
@@ -74,6 +90,170 @@ class _ThemeLibraryPageState extends State<ThemeLibraryPage> {
           ),
       ],
     );
+  }
+}
+
+class CustomMaterialPage extends StatefulWidget {
+  const CustomMaterialPage({super.key, required this.onSave});
+
+  final Future<void> Function(LearningTheme theme) onSave;
+
+  @override
+  State<CustomMaterialPage> createState() => _CustomMaterialPageState();
+}
+
+class _CustomMaterialPageState extends State<CustomMaterialPage> {
+  final titleController = TextEditingController();
+  final contentController = TextEditingController();
+  final focusController = TextEditingController();
+  LearningStage stage = LearningStage.daily;
+  ContentKind kind = ContentKind.dailyLife;
+  String? errorText;
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    contentController.dispose();
+    focusController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.page,
+      body: SafeArea(
+        child: AppScrollPage(
+          title: '手动素材',
+          leading: IconButton.filledTonal(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.arrow_back),
+          ),
+          children: [
+            CardPanel(
+              title: '粘贴合法短片段',
+              icon: Icons.edit_note,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '适合粘贴你自己写的对话、授权片段、官方短预览或少量学习笔记。不要保存完整剧本、完整歌词或长篇受版权保护文本。',
+                    style: AppText.muted,
+                  ),
+                  const SizedBox(height: 14),
+                  _LabeledTextField(
+                    label: '标题',
+                    hint: '例如：餐厅点单小片段',
+                    controller: titleController,
+                  ),
+                  const SizedBox(height: 12),
+                  _PickerRow(
+                    stage: stage,
+                    kind: kind,
+                    onStageChanged: (value) => setState(() => stage = value),
+                    onKindChanged: (value) => setState(() => kind = value),
+                  ),
+                  const SizedBox(height: 12),
+                  _LabeledTextField(
+                    label: '训练重点',
+                    hint: '例如：点单、确认需求、礼貌回应',
+                    controller: focusController,
+                  ),
+                  const SizedBox(height: 12),
+                  _LabeledTextField(
+                    label: '短片段内容',
+                    hint: '粘贴 2-8 句英文，或一小段原创/授权内容',
+                    controller: contentController,
+                    minLines: 6,
+                  ),
+                  if (errorText != null) ...[
+                    const SizedBox(height: 10),
+                    Text(errorText!, style: const TextStyle(color: Colors.red)),
+                  ],
+                  const SizedBox(height: 14),
+                  PrimaryButton(
+                    icon: Icons.save_outlined,
+                    text: '保存为素材',
+                    onPressed: save,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> save() async {
+    final content = contentController.text.trim();
+    if (content.isEmpty) {
+      setState(() => errorText = '先粘贴一小段合法素材内容。');
+      return;
+    }
+
+    final theme = LearningTheme(
+      title: _titleFor(titleController.text, content),
+      stage: stage,
+      kind: kind,
+      sourceHint: '手动粘贴素材',
+      focus: focusController.text.trim().isEmpty
+          ? '从手动片段中提炼表达、跟读和默写'
+          : focusController.text.trim(),
+      difficulty: _difficultyFor(stage),
+      previewTitle: '你保存的短片段',
+      previewDescription: '本地保存的手动素材，可直接生成今日 15 分钟练习。',
+      sampleContent: content,
+      practiceSentences: _practiceSentencesFor(content),
+      keyVocabulary: _keywordsFor(content),
+    );
+
+    await widget.onSave(theme);
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
+  String _titleFor(String rawTitle, String content) {
+    final trimmed = rawTitle.trim();
+    if (trimmed.isNotEmpty) return trimmed;
+
+    final firstLine = content
+        .split(RegExp(r'[\n.!?。！？]'))
+        .map((line) => line.trim())
+        .firstWhere((line) => line.isNotEmpty, orElse: () => '手动素材');
+    return firstLine.length > 18
+        ? '${firstLine.substring(0, 18)}...'
+        : firstLine;
+  }
+
+  String _difficultyFor(LearningStage stage) {
+    return switch (stage) {
+      LearningStage.daily => 'A2-B1',
+      LearningStage.media => 'B1',
+      LearningStage.news => 'B1-B2',
+      LearningStage.reading => 'B2-C1',
+    };
+  }
+
+  List<String> _practiceSentencesFor(String content) {
+    final sentences = content
+        .split(RegExp(r'[\n。！？.!?]+'))
+        .map((item) => item.trim())
+        .where((item) => item.length >= 8)
+        .take(5)
+        .toList();
+    return sentences.isEmpty ? [content] : sentences;
+  }
+
+  List<String> _keywordsFor(String content) {
+    final matches = RegExp(r"[A-Za-z][A-Za-z'-]{3,}").allMatches(content);
+    final words = <String>[];
+    for (final match in matches) {
+      final word = match.group(0)!.toLowerCase();
+      if (!words.contains(word)) words.add(word);
+      if (words.length == 4) break;
+    }
+    return words.isEmpty ? const ['expression', 'practice'] : words;
   }
 }
 
@@ -280,6 +460,162 @@ class _MaterialOverview extends StatelessWidget {
             const SizedBox(height: 10),
             const Text('还没有使用历史，推荐会先从同阶段素材里轮换。', style: AppText.muted),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CustomMaterialEntry extends StatelessWidget {
+  const _CustomMaterialEntry({
+    required this.customCount,
+    required this.onCreate,
+  });
+
+  final int customCount;
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    return CardPanel(
+      title: '手动素材',
+      icon: Icons.post_add,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            customCount == 0
+                ? '粘贴一小段合法内容，保存成本地素材，再生成今日练习。'
+                : '已保存 $customCount 个手动素材，可和内置素材一起轮换推荐。',
+            style: AppText.muted,
+          ),
+          const SizedBox(height: 12),
+          SecondaryButton(icon: Icons.add, text: '粘贴新素材', onPressed: onCreate),
+        ],
+      ),
+    );
+  }
+}
+
+class _LabeledTextField extends StatelessWidget {
+  const _LabeledTextField({
+    required this.label,
+    required this.hint,
+    required this.controller,
+    this.minLines = 1,
+  });
+
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final int minLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppText.emphasis),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          minLines: minLines,
+          maxLines: minLines == 1 ? 1 : 10,
+          decoration: InputDecoration(
+            hintText: hint,
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.line),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PickerRow extends StatelessWidget {
+  const _PickerRow({
+    required this.stage,
+    required this.kind,
+    required this.onStageChanged,
+    required this.onKindChanged,
+  });
+
+  final LearningStage stage;
+  final ContentKind kind;
+  final ValueChanged<LearningStage> onStageChanged;
+  final ValueChanged<ContentKind> onKindChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        _DropdownBox<LearningStage>(
+          label: '阶段',
+          value: stage,
+          items: LearningStage.values,
+          itemLabel: (item) => item.label,
+          onChanged: onStageChanged,
+        ),
+        _DropdownBox<ContentKind>(
+          label: '类型',
+          value: kind,
+          items: ContentKind.values,
+          itemLabel: (item) => item.label,
+          onChanged: onKindChanged,
+        ),
+      ],
+    );
+  }
+}
+
+class _DropdownBox<T> extends StatelessWidget {
+  const _DropdownBox({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.itemLabel,
+    required this.onChanged,
+  });
+
+  final String label;
+  final T value;
+  final List<T> items;
+  final String Function(T item) itemLabel;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 160,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: AppText.emphasis),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<T>(
+            initialValue: value,
+            items: [
+              for (final item in items)
+                DropdownMenuItem(value: item, child: Text(itemLabel(item))),
+            ],
+            onChanged: (value) {
+              if (value != null) onChanged(value);
+            },
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.line),
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -4,6 +4,7 @@ import 'data/sample_data.dart';
 import 'models/learning_models.dart';
 import 'services/audio_player_service.dart';
 import 'services/audio_recorder_service.dart';
+import 'services/custom_material_store.dart';
 import 'services/daily_lesson_service.dart';
 import 'services/local_progress_store.dart';
 import 'services/material_activity_store.dart';
@@ -36,11 +37,13 @@ class _AppShellState extends State<AppShell> {
   final lessonStore = const DailyLessonStore();
   final lessonGateway = const DailyLessonGateway();
   final materialStore = const MaterialActivityStore();
+  final customMaterialStore = const CustomMaterialStore();
 
   int index = 0;
   LocalProgress progress = const LocalProgress.empty();
   LocalLearningStats stats = const LocalLearningStats.empty();
   MaterialActivityState materialState = const MaterialActivityState.empty();
+  List<LearningTheme> customThemes = const [];
   DailyLesson lesson = SampleData.todayLesson;
   DailyLessonSource lessonSource = DailyLessonSource.local;
   bool isGeneratingLesson = false;
@@ -62,12 +65,16 @@ class _AppShellState extends State<AppShell> {
     final storedMaterialState = await materialStore.load().catchError(
       (_) => const MaterialActivityState.empty(),
     );
+    final storedCustomThemes = await customMaterialStore.load().catchError(
+      (_) => const <LearningTheme>[],
+    );
     if (!mounted) return;
 
     setState(() {
       progress = storedProgress;
       stats = storedStats;
       materialState = storedMaterialState;
+      customThemes = storedCustomThemes;
       if (storedLesson != null) {
         lesson = storedLesson.lesson;
         lessonSource = storedLesson.source;
@@ -95,6 +102,7 @@ class _AppShellState extends State<AppShell> {
     final response = await lessonGateway.generate(
       stats: stats,
       materialState: materialState,
+      availableThemes: [...SampleData.themes, ...customThemes],
       preferredStage: LearningStage.daily,
     );
     await lessonStore.save(response).catchError((_) {});
@@ -134,6 +142,13 @@ class _AppShellState extends State<AppShell> {
     setState(() => materialState = nextMaterialState);
   }
 
+  Future<void> saveCustomTheme(LearningTheme theme) async {
+    final nextThemes = await customMaterialStore.save(theme);
+    if (!mounted) return;
+
+    setState(() => customThemes = nextThemes);
+  }
+
   @override
   Widget build(BuildContext context) {
     final completedMinutes = progress.completedMinutes;
@@ -151,8 +166,10 @@ class _AppShellState extends State<AppShell> {
       ThemeLibraryPage(
         key: const ValueKey('theme-library-page'),
         materialState: materialState,
+        customThemes: customThemes,
         onUseTheme: useThemeAsDailyLesson,
         onToggleFavorite: toggleThemeFavorite,
+        onSaveCustomTheme: saveCustomTheme,
       ),
       SpeakingPage(
         key: const ValueKey('speaking-page'),

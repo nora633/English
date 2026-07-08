@@ -3,6 +3,7 @@ import 'package:english_learning_app/src/data/sample_data.dart';
 import 'package:english_learning_app/src/models/learning_models.dart';
 import 'package:english_learning_app/src/services/audio_player_service.dart';
 import 'package:english_learning_app/src/services/audio_recorder_service.dart';
+import 'package:english_learning_app/src/services/custom_material_store.dart';
 import 'package:english_learning_app/src/services/daily_lesson_service.dart';
 import 'package:english_learning_app/src/services/exercise_check_service.dart';
 import 'package:english_learning_app/src/services/local_progress_store.dart';
@@ -338,6 +339,29 @@ void main() {
     expect(unfavorited.history.single.themeTitle, '咖啡店偶遇');
   });
 
+  test('custom material store saves pasted themes locally', () async {
+    final store = const CustomMaterialStore();
+    final theme = LearningTheme(
+      title: '机场问路片段',
+      stage: LearningStage.daily,
+      kind: ContentKind.dailyLife,
+      sourceHint: '手动粘贴素材',
+      focus: '问路和确认方向',
+      difficulty: 'A2-B1',
+      previewTitle: '你保存的短片段',
+      previewDescription: '本地保存的手动素材',
+      sampleContent: 'Could you tell me where gate B12 is?',
+      practiceSentences: const ['Could you tell me where gate B12 is?'],
+      keyVocabulary: const ['could', 'tell', 'gate'],
+    );
+
+    final saved = await store.save(theme);
+    final loaded = await store.load();
+
+    expect(saved.single.title, '机场问路片段');
+    expect(loaded.single.sampleContent, contains('gate B12'));
+  });
+
   test('local daily recommendation avoids recently used materials', () {
     final service = const LocalDailyLessonService();
     final lesson = service.generate(
@@ -357,6 +381,39 @@ void main() {
     );
 
     expect(lesson.theme.title, '咖啡店偶遇');
+  });
+
+  test('local daily recommendation can use custom favorite materials', () {
+    final customTheme = LearningTheme(
+      title: '机场问路片段',
+      stage: LearningStage.daily,
+      kind: ContentKind.dailyLife,
+      sourceHint: '手动粘贴素材',
+      focus: '问路和确认方向',
+      difficulty: 'A2-B1',
+      previewTitle: '你保存的短片段',
+      previewDescription: '本地保存的手动素材',
+      sampleContent:
+          'Could you tell me where gate B12 is? I need to get there before boarding.',
+      practiceSentences: const [
+        'Could you tell me where gate B12 is?',
+        'I need to get there before boarding.',
+      ],
+      keyVocabulary: const ['could', 'gate', 'boarding'],
+    );
+
+    final lesson = const LocalDailyLessonService().generate(
+      stats: const LocalLearningStats.empty(),
+      preferredStage: LearningStage.daily,
+      availableThemes: [...SampleData.themes, customTheme],
+      materialState: const MaterialActivityState(
+        favoriteTitles: ['机场问路片段'],
+        history: [],
+      ),
+    );
+
+    expect(lesson.theme.title, '机场问路片段');
+    expect(lesson.listeningLines.first, contains('gate B12'));
   });
 
   testWidgets('opens keyword detail from today word card', (tester) async {
@@ -612,6 +669,55 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('收藏 1 个'), findsOneWidget);
+  });
+
+  testWidgets('creates a pasted material and uses it as today lesson', (
+    tester,
+  ) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('素材'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('粘贴新素材'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).at(0), '机场问路片段');
+    await tester.enterText(find.byType(TextField).at(1), '问路和确认方向');
+    await tester.enterText(
+      find.byType(TextField).at(2),
+      'Could you tell me where gate B12 is?\nI need to get there before boarding.',
+    );
+    await tester.scrollUntilVisible(
+      find.text('保存为素材'),
+      320,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('保存为素材'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('机场问路片段'),
+      320,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('机场问路片段'), findsOneWidget);
+
+    await tester.tap(find.text('机场问路片段'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('生成今日 15 分钟练习'),
+      320,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('生成今日 15 分钟练习'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('今日学习'), findsOneWidget);
+    expect(find.textContaining('机场问路片段'), findsWidgets);
   });
 }
 

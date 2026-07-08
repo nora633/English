@@ -3,8 +3,11 @@ import 'package:english_learning_app/src/services/audio_player_service.dart';
 import 'package:english_learning_app/src/services/audio_recorder_service.dart';
 import 'package:english_learning_app/src/services/local_progress_store.dart';
 import 'package:english_learning_app/src/services/speech_service.dart';
+import 'package:english_learning_app/src/services/translation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -155,6 +158,35 @@ void main() {
     expect(importedProgress.completedMinutes, 10);
     expect(importedStats.totalMinutes, 10);
     expect(importedStats.history.single.date, '2026-07-02');
+  });
+
+  test('remote translation service parses AI backend response', () async {
+    final service = RemoteTranslationService(
+      baseUrl: 'http://localhost:8787',
+      clientFactory: () => MockClient((request) async {
+        expect(request.url.path, '/api/translate');
+        return http.Response(
+          '''
+          {
+            "source": "我想要一杯咖啡",
+            "english": "I'd like a cup of coffee.",
+            "koreanHonorific": "커피 한 잔 주세요.",
+            "koreanCasual": "커피 한 잔 줘.",
+            "koreanPronunciation": "keo-pi han jan ju-se-yo / keo-pi han jan jwo",
+            "usageNote": "点单时这样说更自然。"
+          }
+          ''',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+
+    final result = await service.translate('我想要一杯咖啡');
+
+    expect(result.english, "I'd like a cup of coffee.");
+    expect(result.koreanHonorific, '커피 한 잔 주세요.');
+    expect(result.koreanPronunciation, contains('ju-se-yo'));
   });
 
   testWidgets('opens keyword detail from today word card', (tester) async {

@@ -19,11 +19,13 @@ class TranslationPage extends StatefulWidget {
 class _TranslationPageState extends State<TranslationPage> {
   final input = TextEditingController(text: '我想要一杯咖啡');
   final translator = const TranslationService();
+  final translationGateway = const TranslationGateway();
   final historyStore = const TranslationHistoryStore();
   late final SpeechClient speechClient;
   TranslationResult? result;
   List<TranslationHistoryItem> history = const [];
   String? message;
+  bool isTranslating = false;
 
   @override
   void initState() {
@@ -56,10 +58,19 @@ class _TranslationPageState extends State<TranslationPage> {
   }
 
   Future<void> translate() async {
-    final translated = translator.translate(input.text);
+    setState(() {
+      isTranslating = true;
+      message = '正在生成翻译...';
+    });
+
+    final response = await translationGateway.translate(input.text);
+    final translated = response.result;
+    if (!mounted) return;
+
     setState(() {
       result = translated;
-      message = null;
+      message = response.source.label;
+      isTranslating = false;
     });
     await historyStore.save(translated);
     await loadHistory();
@@ -125,9 +136,9 @@ class _TranslationPageState extends State<TranslationPage> {
               ),
               const SizedBox(height: 12),
               PrimaryButton(
-                icon: Icons.auto_awesome,
-                text: '生成翻译',
-                onPressed: translate,
+                icon: isTranslating ? Icons.hourglass_top : Icons.auto_awesome,
+                text: isTranslating ? '生成中' : '生成翻译',
+                onPressed: isTranslating ? () {} : translate,
               ),
               if (message != null) ...[
                 const SizedBox(height: 10),

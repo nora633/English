@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
 class TranslationResult {
   const TranslationResult({
     required this.source,
@@ -14,6 +18,136 @@ class TranslationResult {
   final String koreanCasual;
   final String koreanPronunciation;
   final String usageNote;
+
+  factory TranslationResult.fromJson(Map<String, dynamic> json) {
+    return TranslationResult(
+      source: json['source']?.toString() ?? '',
+      english: json['english']?.toString() ?? '',
+      koreanHonorific: json['koreanHonorific']?.toString() ?? '',
+      koreanCasual: json['koreanCasual']?.toString() ?? '',
+      koreanPronunciation: json['koreanPronunciation']?.toString() ?? '',
+      usageNote: json['usageNote']?.toString() ?? '',
+    );
+  }
+
+  Map<String, String> toJson() {
+    return {
+      'source': source,
+      'english': english,
+      'koreanHonorific': koreanHonorific,
+      'koreanCasual': koreanCasual,
+      'koreanPronunciation': koreanPronunciation,
+      'usageNote': usageNote,
+    };
+  }
+}
+
+class TranslationGateway {
+  const TranslationGateway({
+    this.remote = const RemoteTranslationService(),
+    this.local = const TranslationService(),
+  });
+
+  final RemoteTranslationService remote;
+  final TranslationService local;
+
+  Future<TranslationResponse> translate(String text) async {
+    final source = text.trim();
+    if (source.isEmpty) {
+      return TranslationResponse(
+        result: local.translate(source),
+        source: TranslationSource.local,
+      );
+    }
+
+    if (remote.isConfigured) {
+      try {
+        final result = await remote.translate(source);
+        return TranslationResponse(
+          result: result,
+          source: TranslationSource.ai,
+        );
+      } catch (_) {
+        return TranslationResponse(
+          result: local.translate(source),
+          source: TranslationSource.localFallback,
+        );
+      }
+    }
+
+    return TranslationResponse(
+      result: local.translate(source),
+      source: TranslationSource.local,
+    );
+  }
+}
+
+class TranslationResponse {
+  const TranslationResponse({required this.result, required this.source});
+
+  final TranslationResult result;
+  final TranslationSource source;
+}
+
+enum TranslationSource {
+  ai('AI 翻译'),
+  local('本地词库'),
+  localFallback('AI 暂不可用，已用本地词库');
+
+  const TranslationSource(this.label);
+
+  final String label;
+}
+
+class RemoteTranslationService {
+  const RemoteTranslationService({
+    this.baseUrl = const String.fromEnvironment('AI_TRANSLATION_API_BASE'),
+    this.clientFactory = _defaultClientFactory,
+  });
+
+  final String baseUrl;
+  final http.Client Function() clientFactory;
+
+  bool get isConfigured => baseUrl.trim().isNotEmpty;
+
+  Future<TranslationResult> translate(String text) async {
+    final endpoint = Uri.parse(
+      '${baseUrl.replaceFirst(RegExp(r'/$'), '')}/api/translate',
+    );
+    final client = clientFactory();
+
+    try {
+      final response = await client.post(
+        endpoint,
+        headers: const {'Content-Type': 'application/json'},
+        body: jsonEncode({'text': text}),
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw RemoteTranslationException('AI 翻译接口返回 ${response.statusCode}');
+      }
+
+      final body = jsonDecode(response.body);
+      if (body is! Map<String, dynamic>) {
+        throw const RemoteTranslationException('AI 翻译接口返回格式不正确');
+      }
+
+      return TranslationResult.fromJson(body);
+    } finally {
+      client.close();
+    }
+  }
+}
+
+http.Client _defaultClientFactory() => http.Client();
+
+class RemoteTranslationException implements Exception {
+  const RemoteTranslationException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }
 
 class TranslationService {

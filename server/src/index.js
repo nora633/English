@@ -25,6 +25,16 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
+    if (request.method === 'POST' && url.pathname === '/api/check-dictation') {
+      await handleExerciseCheck(request, response, 'dictation');
+      return;
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/check-recall') {
+      await handleExerciseCheck(request, response, 'recall');
+      return;
+    }
+
     sendJson(response, 404, { error: 'Not found' });
   } catch (error) {
     sendJson(response, 500, {
@@ -54,6 +64,35 @@ async function handleTranslate(request, response) {
   }
 
   const result = await translateWithOpenAI({ apiKey, text });
+  sendJson(response, 200, result);
+}
+
+async function handleExerciseCheck(request, response, mode) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    sendJson(response, 503, {
+      error: 'OPENAI_API_KEY is not configured on the server.',
+    });
+    return;
+  }
+
+  const body = await readJson(request);
+  const target = typeof body.target === 'string' ? body.target.trim() : '';
+  const answer = typeof body.answer === 'string' ? body.answer.trim() : '';
+  const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
+
+  if (!target || !answer) {
+    sendJson(response, 400, { error: 'target and answer are required.' });
+    return;
+  }
+
+  const result = await checkExerciseWithOpenAI({
+    apiKey,
+    mode,
+    target,
+    answer,
+    prompt,
+  });
   sendJson(response, 200, result);
 }
 
@@ -123,6 +162,115 @@ async function translateWithOpenAI({ apiKey, text }) {
     koreanPronunciation: String(result.koreanPronunciation || ''),
     usageNote: String(result.usageNote || ''),
   };
+}
+
+async function checkExerciseWithOpenAI({ apiKey, mode, target, answer, prompt }) {
+  const task =
+    mode === 'dictation'
+      ? 'Check an English dictation answer against the exact target sentence. Ignore capitalization and minor punctuation. Focus on missing words, wrong words, word order, and contractions.'
+      : 'Check an English recall answer from a Chinese prompt. Judge whether the meaning is correct and the English is natural. Do not require exact wording if the meaning is equivalent.';
+
+  const openaiResponse = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      input: [
+        {
+          role: 'system',
+          content:
+            'You are a strict but encouraging English tutor for a Chinese learner. Return only valid JSON that matches the requested schema. Keep feedback short and actionable in Chinese.',
+        },
+        {
+          role: 'user',
+          content: [
+            task,
+            `Mode: ${mode}`,
+            `Chinese prompt: ${prompt || 'N/A'}`,
+            `Target/reference sentence: ${target}`,
+            `Learner answer: ${answer}`,
+          ].join('\n'),
+        },
+      ],
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'waiyudao_exercise_check',
+          strict: true,
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            required: [
+              'score',
+              'level',
+              'summary',
+              'reference',
+              'correctedAnswer',
+              'issues',
+              'suggestions',
+            ],
+            properties: {
+              score: { type: 'integer', minimum: 0, maximum: 100 },
+              level: {
+                type: 'string',
+                enum: ['great', 'pass', 'needs_work'],
+              },
+              summary: { type: 'string' },
+              reference: { type: 'string' },
+              correctedAnswer: { type: 'string' },
+              issues: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+              suggestions: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    }),
+  });
+
+  const payload = await openaiResponse.json();
+  if (!openaiResponse.ok) {
+    throw new Error(payload.error?.message || 'OpenAI request failed.');
+  }
+
+  const outputText = extractOutputText(payload);
+  const result = JSON.parse(outputText);
+
+  return {
+    score: clampScore(result.score),
+    level: normalizeLevel(result.level),
+    summary: String(result.summary || ''),
+    reference: String(result.reference || target),
+    correctedAnswer: String(result.correctedAnswer || target),
+    issues: normalizeStringList(result.issues),
+    suggestions: normalizeStringList(result.suggestions),
+  };
+}
+
+function clampScore(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.min(100, Math.round(parsed)));
+}
+
+function normalizeLevel(value) {
+  if (value === 'great' || value === 'pass' || value === 'needs_work') {
+    return value;
+  }
+  return 'needs_work';
+}
+
+function normalizeStringList(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item)).filter(Boolean);
 }
 
 function extractOutputText(payload) {

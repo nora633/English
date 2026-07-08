@@ -1,6 +1,7 @@
 import 'package:english_learning_app/main.dart';
 import 'package:english_learning_app/src/services/audio_player_service.dart';
 import 'package:english_learning_app/src/services/audio_recorder_service.dart';
+import 'package:english_learning_app/src/services/exercise_check_service.dart';
 import 'package:english_learning_app/src/services/local_progress_store.dart';
 import 'package:english_learning_app/src/services/speech_service.dart';
 import 'package:english_learning_app/src/services/translation_service.dart';
@@ -189,6 +190,52 @@ void main() {
     expect(result.koreanPronunciation, contains('ju-se-yo'));
   });
 
+  test('remote exercise check service parses AI backend response', () async {
+    final service = RemoteExerciseCheckService(
+      baseUrl: 'http://localhost:8787',
+      clientFactory: () => MockClient((request) async {
+        expect(request.url.path, '/api/check-dictation');
+        return http.Response(
+          '''
+          {
+            "score": 86,
+            "level": "pass",
+            "summary": "大意正确，但漏了 anything。",
+            "reference": "I was about to grab some coffee. Do you want anything?",
+            "correctedAnswer": "I was about to grab some coffee. Do you want anything?",
+            "issues": ["缺少 anything"],
+            "suggestions": ["再听一遍句尾。"]
+          }
+          ''',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+
+    final result = await service.check(
+      mode: ExerciseCheckMode.dictation,
+      target: 'I was about to grab some coffee. Do you want anything?',
+      answer: 'I was about to grab some coffee.',
+    );
+
+    expect(result.score, 86);
+    expect(result.level, ExerciseCheckLevel.pass);
+    expect(result.issues, contains('缺少 anything'));
+  });
+
+  test('local exercise check highlights missing words', () {
+    final result = const LocalExerciseCheckService().check(
+      mode: ExerciseCheckMode.dictation,
+      target: 'I was about to grab some coffee. Do you want anything?',
+      answer: 'I was about to grab coffee',
+    );
+
+    expect(result.score, lessThan(100));
+    expect(result.issues.join(' '), contains('anything'));
+    expect(result.reference, contains('Do you want anything'));
+  });
+
   testWidgets('opens keyword detail from today word card', (tester) async {
     await tester.pumpWidget(testApp());
     await tester.pumpAndSettle();
@@ -305,6 +352,43 @@ void main() {
     expect(find.text('最近翻译'), findsOneWidget);
     expect(find.text('谢谢'), findsOneWidget);
     expect(find.text('Thank you.'), findsWidgets);
+  });
+
+  testWidgets('shows dictation feedback after checking an answer', (
+    tester,
+  ) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('去跟读练习'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('去跟读练习'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('开始录音'));
+    await tester.pump();
+    await tester.tap(find.text('停止录音'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('保存录音'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('保存录音'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('检查听写'),
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byType(TextField).first,
+      'I was about to grab coffee',
+    );
+    await tester.tap(find.text('检查听写'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('本地检查'), findsOneWidget);
+    expect(find.textContaining('分'), findsWidgets);
+    expect(find.textContaining('anything'), findsWidgets);
   });
 }
 

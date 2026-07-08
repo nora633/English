@@ -15,6 +15,13 @@
 Flutter App -> /api/translate -> OpenAI Responses API -> Flutter App
 ```
 
+同时已预留并接入练习检查：
+
+```text
+Flutter App -> /api/check-dictation -> OpenAI Responses API -> Flutter App
+Flutter App -> /api/check-recall -> OpenAI Responses API -> Flutter App
+```
+
 后端目录：
 
 ```text
@@ -95,6 +102,8 @@ flutter run --dart-define=AI_TRANSLATION_API_BASE=http://192.168.1.10:8787
 
 如果没有传 `AI_TRANSLATION_API_BASE`，App 会自动使用本地词库。
 
+听写和默写检查也使用同一个 `AI_TRANSLATION_API_BASE`。没有配置后端时，App 会用本地规则检查缺词和错词。
+
 ## 打 APK 时接入 AI
 
 ```bash
@@ -110,8 +119,8 @@ flutter build apk --debug --no-pub \
 
 ## 下一步 AI 功能
 
-1. 翻译：已经具备接口骨架。
-2. 听写检查：把目标句和用户输入发给 AI，返回漏词、错词和建议。
-3. 默写检查：判断意思是否接近，返回自然表达建议。
+1. 翻译：已具备接口骨架和 App 调用层。
+2. 听写检查：已具备接口骨架和 App 调用层。
+3. 默写检查：已具备接口骨架和 App 调用层。
 4. 口语评分：上传录音，后端先转写，再评分。
 5. 每日练习生成：根据本地复盘记录生成下一天 15 分钟练习。

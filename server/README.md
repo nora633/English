@@ -32,6 +32,22 @@ curl -X POST http://localhost:8787/api/translate \
   -d '{"text":"我想要一杯咖啡"}'
 ```
 
+听写检查：
+
+```bash
+curl -X POST http://localhost:8787/api/check-dictation \
+  -H "Content-Type: application/json" \
+  -d '{"target":"I was about to grab some coffee. Do you want anything?","answer":"I was about to grab coffee"}'
+```
+
+默写检查：
+
+```bash
+curl -X POST http://localhost:8787/api/check-recall \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"我正准备去买杯咖啡。你要带点什么吗？","target":"I was about to grab some coffee. Do you want anything?","answer":"I am going to buy coffee. Do you need anything?"}'
+```
+
 ## App 连接方式
 
 打包或运行 Flutter 时传入后端地址：

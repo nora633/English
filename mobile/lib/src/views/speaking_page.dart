@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../data/sample_data.dart';
 import '../services/audio_player_service.dart';
 import '../services/audio_recorder_service.dart';
+import '../services/exercise_check_service.dart';
 import '../services/speech_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
@@ -22,11 +23,13 @@ class SpeakingPage extends StatefulWidget {
     this.audioRecorder,
     this.audioPlayer,
     this.speechClient,
+    this.exerciseCheckGateway,
   });
 
   final RecordingClient? audioRecorder;
   final AudioPlaybackClient? audioPlayer;
   final SpeechClient? speechClient;
+  final ExerciseCheckGateway? exerciseCheckGateway;
   final bool? recordingCompleted;
   final bool? dictationCompleted;
   final bool? recallCompleted;
@@ -43,6 +46,7 @@ class _SpeakingPageState extends State<SpeakingPage> {
   late final RecordingClient audioRecorder;
   late final AudioPlaybackClient audioPlayer;
   late final SpeechClient speechClient;
+  late final ExerciseCheckGateway exerciseCheckGateway;
   final dictation = TextEditingController();
   final recall = TextEditingController();
   Timer? recordingTimer;
@@ -54,6 +58,10 @@ class _SpeakingPageState extends State<SpeakingPage> {
   String? recordingPath;
   String? recordingError;
   String? playbackError;
+  bool isCheckingDictation = false;
+  bool isCheckingRecall = false;
+  ExerciseCheckResponse? dictationFeedback;
+  ExerciseCheckResponse? recallFeedback;
 
   @override
   void initState() {
@@ -61,6 +69,8 @@ class _SpeakingPageState extends State<SpeakingPage> {
     audioRecorder = widget.audioRecorder ?? AudioRecorderService();
     audioPlayer = widget.audioPlayer ?? AudioPlayerService();
     speechClient = widget.speechClient ?? SpeechService();
+    exerciseCheckGateway =
+        widget.exerciseCheckGateway ?? const ExerciseCheckGateway();
   }
 
   void saveRecording() {
@@ -195,11 +205,41 @@ class _SpeakingPageState extends State<SpeakingPage> {
     });
   }
 
-  void checkDictation() {
+  Future<void> checkDictation() async {
+    final lesson = SampleData.todayLesson;
+    setState(() => isCheckingDictation = true);
+
+    final feedback = await exerciseCheckGateway.check(
+      mode: ExerciseCheckMode.dictation,
+      target: lesson.listeningLines.first,
+      answer: dictation.text,
+    );
+    if (!mounted) return;
+
+    setState(() {
+      dictationFeedback = feedback;
+      isCheckingDictation = false;
+    });
     widget.onDictationChecked();
   }
 
-  void checkRecall() {
+  Future<void> checkRecall() async {
+    final lesson = SampleData.todayLesson;
+    const prompt = '我正准备去买杯咖啡。你要带点什么吗？';
+    setState(() => isCheckingRecall = true);
+
+    final feedback = await exerciseCheckGateway.check(
+      mode: ExerciseCheckMode.recall,
+      target: lesson.listeningLines.first,
+      answer: recall.text,
+      prompt: prompt,
+    );
+    if (!mounted) return;
+
+    setState(() {
+      recallFeedback = feedback;
+      isCheckingRecall = false;
+    });
     widget.onRecallChecked();
   }
 
@@ -377,16 +417,18 @@ class _SpeakingPageState extends State<SpeakingPage> {
                 AppTextField(controller: dictation, hint: 'I was about to...'),
                 const SizedBox(height: 12),
                 PrimaryButton(
-                  icon: Icons.check_circle_outline,
-                  text: '检查听写',
-                  onPressed: checkDictation,
+                  icon: isCheckingDictation
+                      ? Icons.hourglass_top
+                      : Icons.check_circle_outline,
+                  text: isCheckingDictation ? '检查中' : '检查听写',
+                  onPressed: isCheckingDictation
+                      ? () {}
+                      : () {
+                          checkDictation();
+                        },
                 ),
-                if (checkedDictation)
-                  WritingFeedback(
-                    title: '听写反馈',
-                    reference: lesson.listeningLines.first,
-                    note: '重点检查 about to、grab、anything 是否写完整。',
-                  ),
+                if (checkedDictation && dictationFeedback != null)
+                  ExerciseFeedbackCard(feedback: dictationFeedback!),
               ],
             ),
           ),
@@ -408,16 +450,18 @@ class _SpeakingPageState extends State<SpeakingPage> {
                 ),
                 const SizedBox(height: 12),
                 PrimaryButton(
-                  icon: Icons.visibility_outlined,
-                  text: '检查默写',
-                  onPressed: checkRecall,
+                  icon: isCheckingRecall
+                      ? Icons.hourglass_top
+                      : Icons.visibility_outlined,
+                  text: isCheckingRecall ? '检查中' : '检查默写',
+                  onPressed: isCheckingRecall
+                      ? () {}
+                      : () {
+                          checkRecall();
+                        },
                 ),
-                if (checkedRecall)
-                  WritingFeedback(
-                    title: '默写反馈',
-                    reference: lesson.listeningLines.first,
-                    note: '后续会加入相似度评分、漏词提醒和自然表达建议。',
-                  ),
+                if (checkedRecall && recallFeedback != null)
+                  ExerciseFeedbackCard(feedback: recallFeedback!),
               ],
             ),
           ),
@@ -439,6 +483,63 @@ class _SpeakingPageState extends State<SpeakingPage> {
             ),
           ),
       ],
+    );
+  }
+}
+
+class ExerciseFeedbackCard extends StatelessWidget {
+  const ExerciseFeedbackCard({super.key, required this.feedback});
+
+  final ExerciseCheckResponse feedback;
+
+  @override
+  Widget build(BuildContext context) {
+    final result = feedback.result;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.subtle,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${result.level.label} · ${feedback.source.label}',
+                  style: AppText.emphasis,
+                ),
+              ),
+              SmallChip(label: '${result.score} 分'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(result.summary, style: AppText.bodyLarge),
+          const SizedBox(height: 8),
+          Text('参考：${result.reference}', style: AppText.muted),
+          if (result.correctedAnswer.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text('建议答案：${result.correctedAnswer}'),
+          ],
+          if (result.issues.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text('问题', style: AppText.emphasis),
+            const SizedBox(height: 6),
+            for (final issue in result.issues) BulletLine(text: issue),
+          ],
+          if (result.suggestions.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text('建议', style: AppText.emphasis),
+            const SizedBox(height: 6),
+            for (final suggestion in result.suggestions)
+              BulletLine(text: suggestion),
+          ],
+        ],
+      ),
     );
   }
 }

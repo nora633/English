@@ -331,6 +331,11 @@ class _ThemeDetailPageState extends State<ThemeDetailPage> {
               ),
             ),
             CardPanel(
+              title: '内容边界',
+              icon: Icons.verified_user_outlined,
+              child: _ContentBoundaryNotice(theme: theme),
+            ),
+            CardPanel(
               title: '素材状态',
               icon: Icons.insights_outlined,
               child: Wrap(
@@ -462,6 +467,36 @@ class _MaterialOverview extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _ContentBoundaryNotice extends StatelessWidget {
+  const _ContentBoundaryNotice({required this.theme});
+
+  final LearningTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    final reference = theme.sourceHint.contains('本地参考');
+    final custom = theme.sourceHint.contains('手动');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (reference) ...const [
+          BulletLine(text: '本卡只使用本地台词本的学习方向，不保存原始台词。'),
+          BulletLine(text: '精听句、词块和示例对话均为原创改写。'),
+          BulletLine(text: '原始文件保留在素材来源目录，不提交 Git，也不打包进 App。'),
+        ] else if (custom) ...const [
+          BulletLine(text: '手动素材只保存在本机，用于生成今日练习。'),
+          BulletLine(text: '请只粘贴原创、授权、官方短预览或少量学习笔记。'),
+          BulletLine(text: '不要保存完整剧本、完整歌词或长篇受版权保护文本。'),
+        ] else ...const [
+          BulletLine(text: '当前练习内容为 App 内置原创或用户手动提供。'),
+          BulletLine(text: '正式版只展示合法授权、官方预览、用户导入或手动粘贴的内容。'),
+        ],
+      ],
     );
   }
 }

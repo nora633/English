@@ -309,6 +309,18 @@ class ThemeTile extends StatelessWidget {
               const SizedBox(height: 6),
               Text(theme.stage.label, style: AppText.stage),
               const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  if (_isReferenceTheme(theme)) const SmallChip(label: '本地参考'),
+                  if (_isReferenceTheme(theme) || _isCustomTheme(theme))
+                    const SmallChip(label: '原创练习'),
+                  if (_isCustomTheme(theme)) const SmallChip(label: '手动素材'),
+                ],
+              ),
+              if (_isReferenceTheme(theme) || _isCustomTheme(theme))
+                const SizedBox(height: 6),
               Text(theme.sourceHint, style: AppText.muted),
               const SizedBox(height: 6),
               Text(theme.focus),
@@ -323,6 +335,14 @@ class ThemeTile extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  bool _isReferenceTheme(LearningTheme theme) {
+    return theme.sourceHint.contains('本地参考');
+  }
+
+  bool _isCustomTheme(LearningTheme theme) {
+    return theme.sourceHint.contains('手动');
   }
 }
 

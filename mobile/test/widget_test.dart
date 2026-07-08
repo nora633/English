@@ -668,6 +668,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('练习内容为原创改写'), findsOneWidget);
+    expect(find.text('内容边界'), findsOneWidget);
+    expect(find.text('本卡只使用本地台词本的学习方向，不保存原始台词。'), findsOneWidget);
+    expect(find.text('原始文件保留在素材来源目录，不提交 Git，也不打包进 App。'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('生成今日 15 分钟练习'),

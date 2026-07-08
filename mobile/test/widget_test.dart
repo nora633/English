@@ -6,6 +6,7 @@ import 'package:english_learning_app/src/services/audio_recorder_service.dart';
 import 'package:english_learning_app/src/services/daily_lesson_service.dart';
 import 'package:english_learning_app/src/services/exercise_check_service.dart';
 import 'package:english_learning_app/src/services/local_progress_store.dart';
+import 'package:english_learning_app/src/services/material_activity_store.dart';
 import 'package:english_learning_app/src/services/speech_service.dart';
 import 'package:english_learning_app/src/services/translation_service.dart';
 import 'package:flutter/material.dart';
@@ -321,6 +322,43 @@ void main() {
     expect(lesson.keyWords.map((word) => word.word), contains('held up'));
   });
 
+  test('material activity store keeps favorites and usage history', () async {
+    final store = MaterialActivityStore(now: () => DateTime(2026, 7, 8, 9));
+    final theme = SampleData.themes[3];
+
+    final favorited = await store.toggleFavorite(theme);
+    expect(favorited.isFavorite(theme), isTrue);
+
+    final used = await store.recordUse(theme);
+    expect(used.history.single.themeTitle, '咖啡店偶遇');
+    expect(used.recentUsedTitles(), contains('咖啡店偶遇'));
+
+    final unfavorited = await store.toggleFavorite(theme);
+    expect(unfavorited.isFavorite(theme), isFalse);
+    expect(unfavorited.history.single.themeTitle, '咖啡店偶遇');
+  });
+
+  test('local daily recommendation avoids recently used materials', () {
+    final service = const LocalDailyLessonService();
+    final lesson = service.generate(
+      stats: const LocalLearningStats.empty(),
+      preferredStage: LearningStage.daily,
+      materialState: MaterialActivityState(
+        favoriteTitles: const [],
+        history: [
+          MaterialUsageRecord(
+            themeTitle: SampleData.themes.first.title,
+            stage: LearningStage.daily,
+            kind: ContentKind.sitcom,
+            usedAt: DateTime(2026, 7, 8),
+          ),
+        ],
+      ),
+    );
+
+    expect(lesson.theme.title, '咖啡店偶遇');
+  });
+
   testWidgets('opens keyword detail from today word card', (tester) async {
     await tester.pumpWidget(testApp());
     await tester.pumpAndSettle();
@@ -500,7 +538,13 @@ void main() {
 
     await tester.tap(find.text('素材'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('家庭晚餐小插曲'));
+    await tester.scrollUntilVisible(
+      find.text('家庭晚餐小插曲'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('家庭晚餐小插曲'), warnIfMissed: false);
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
@@ -522,6 +566,52 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('I got held up after class.'), findsWidgets);
+  });
+
+  testWidgets('favorites a material from detail page', (tester) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('素材'));
+    await tester.pumpAndSettle();
+    expect(find.text('收藏 0 个'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('咖啡店偶遇'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('咖啡店偶遇'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('收藏素材'),
+      320,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('收藏素材'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('取消收藏'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('素材状态'),
+      -320,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('已收藏'), findsOneWidget);
+
+    Navigator.of(tester.element(find.text('素材状态'))).pop();
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('收藏 1 个'),
+      -320,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('收藏 1 个'), findsOneWidget);
   });
 }
 

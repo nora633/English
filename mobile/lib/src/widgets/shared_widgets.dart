@@ -257,10 +257,18 @@ class GrammarTile extends StatelessWidget {
 }
 
 class ThemeTile extends StatelessWidget {
-  const ThemeTile({super.key, required this.theme, required this.onTap});
+  const ThemeTile({
+    super.key,
+    required this.theme,
+    required this.onTap,
+    this.isFavorite = false,
+    this.wasUsed = false,
+  });
 
   final LearningTheme theme;
   final VoidCallback onTap;
+  final bool isFavorite;
+  final bool wasUsed;
 
   @override
   Widget build(BuildContext context) {
@@ -291,6 +299,10 @@ class ThemeTile extends StatelessWidget {
               Row(
                 children: [
                   Expanded(child: Text(theme.title, style: AppText.sectionBig)),
+                  if (isFavorite) ...[
+                    const Icon(Icons.bookmark, size: 18, color: AppColors.teal),
+                    const SizedBox(width: 6),
+                  ],
                   Text(theme.kind.label, style: AppText.accent),
                 ],
               ),
@@ -300,6 +312,10 @@ class ThemeTile extends StatelessWidget {
               Text(theme.sourceHint, style: AppText.muted),
               const SizedBox(height: 6),
               Text(theme.focus),
+              if (wasUsed) ...[
+                const SizedBox(height: 6),
+                const Text('最近已用于今日练习', style: AppText.muted),
+              ],
               const SizedBox(height: 6),
               Text(theme.difficulty, style: AppText.muted),
             ],

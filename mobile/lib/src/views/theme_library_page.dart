@@ -2,13 +2,21 @@ import 'package:flutter/material.dart';
 
 import '../data/sample_data.dart';
 import '../models/learning_models.dart';
+import '../services/material_activity_store.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 
 class ThemeLibraryPage extends StatefulWidget {
-  const ThemeLibraryPage({super.key, required this.onUseTheme});
+  const ThemeLibraryPage({
+    super.key,
+    required this.materialState,
+    required this.onUseTheme,
+    required this.onToggleFavorite,
+  });
 
-  final ValueChanged<LearningTheme> onUseTheme;
+  final MaterialActivityState materialState;
+  final Future<void> Function(LearningTheme theme) onUseTheme;
+  final Future<void> Function(LearningTheme theme) onToggleFavorite;
 
   @override
   State<ThemeLibraryPage> createState() => _ThemeLibraryPageState();
@@ -45,15 +53,20 @@ class _ThemeLibraryPageState extends State<ThemeLibraryPage> {
           ),
         ),
         const SizedBox(height: 4),
+        _MaterialOverview(state: widget.materialState),
         for (final theme in themes)
           ThemeTile(
             theme: theme,
+            isFavorite: widget.materialState.isFavorite(theme),
+            wasUsed: widget.materialState.wasUsed(theme),
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => ThemeDetailPage(
                     theme: theme,
+                    materialState: widget.materialState,
                     onUseTheme: widget.onUseTheme,
+                    onToggleFavorite: widget.onToggleFavorite,
                   ),
                 ),
               );
@@ -64,18 +77,38 @@ class _ThemeLibraryPageState extends State<ThemeLibraryPage> {
   }
 }
 
-class ThemeDetailPage extends StatelessWidget {
+class ThemeDetailPage extends StatefulWidget {
   const ThemeDetailPage({
     super.key,
     required this.theme,
+    required this.materialState,
     required this.onUseTheme,
+    required this.onToggleFavorite,
   });
 
   final LearningTheme theme;
-  final ValueChanged<LearningTheme> onUseTheme;
+  final MaterialActivityState materialState;
+  final Future<void> Function(LearningTheme theme) onUseTheme;
+  final Future<void> Function(LearningTheme theme) onToggleFavorite;
+
+  @override
+  State<ThemeDetailPage> createState() => _ThemeDetailPageState();
+}
+
+class _ThemeDetailPageState extends State<ThemeDetailPage> {
+  late bool isFavorite;
+
+  @override
+  void initState() {
+    super.initState();
+    isFavorite = widget.materialState.isFavorite(widget.theme);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = widget.theme;
+    final materialState = widget.materialState;
+
     return Scaffold(
       backgroundColor: AppColors.page,
       body: SafeArea(
@@ -114,6 +147,21 @@ class ThemeDetailPage extends StatelessWidget {
                       ],
                     ),
                   ),
+                ],
+              ),
+            ),
+            CardPanel(
+              title: '素材状态',
+              icon: Icons.insights_outlined,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  SmallChip(label: isFavorite ? '已收藏' : '未收藏'),
+                  SmallChip(
+                    label: materialState.wasUsed(theme) ? '最近使用过' : '未生成过',
+                  ),
+                  SmallChip(label: '使用 ${materialState.useCount(theme)} 次'),
                 ],
               ),
             ),
@@ -166,16 +214,21 @@ class ThemeDetailPage extends StatelessWidget {
                   PrimaryButton(
                     icon: Icons.auto_awesome,
                     text: '生成今日 15 分钟练习',
-                    onPressed: () {
-                      onUseTheme(theme);
+                    onPressed: () async {
+                      await widget.onUseTheme(theme);
+                      if (!context.mounted) return;
                       Navigator.of(context).pop();
                     },
                   ),
                   const SizedBox(height: 8),
                   SecondaryButton(
-                    icon: Icons.bookmark_border,
-                    text: '收藏素材',
-                    onPressed: () {},
+                    icon: isFavorite ? Icons.bookmark : Icons.bookmark_border,
+                    text: isFavorite ? '取消收藏' : '收藏素材',
+                    onPressed: () async {
+                      await widget.onToggleFavorite(theme);
+                      if (!mounted) return;
+                      setState(() => isFavorite = !isFavorite);
+                    },
                   ),
                 ],
               ),
@@ -194,5 +247,41 @@ class ThemeDetailPage extends StatelessWidget {
       ContentKind.news => '新闻稿为原创慢速新闻风格文本，先练结构和听读方法。',
       ContentKind.article => '报刊读物为原创观点段落，先练长句拆分和正式表达。',
     };
+  }
+}
+
+class _MaterialOverview extends StatelessWidget {
+  const _MaterialOverview({required this.state});
+
+  final MaterialActivityState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final recentTitles = state.recentUsedTitles(limit: 3);
+
+    return CardPanel(
+      title: '素材偏好',
+      icon: Icons.bookmarks_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              SmallChip(label: '收藏 ${state.favoriteTitles.length} 个'),
+              SmallChip(label: '使用 ${state.history.length} 次'),
+            ],
+          ),
+          if (recentTitles.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text('最近使用：${recentTitles.join('、')}', style: AppText.muted),
+          ] else ...[
+            const SizedBox(height: 10),
+            const Text('还没有使用历史，推荐会先从同阶段素材里轮换。', style: AppText.muted),
+          ],
+        ],
+      ),
+    );
   }
 }

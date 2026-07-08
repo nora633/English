@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/sample_data.dart';
 import '../models/learning_models.dart';
 import 'local_progress_store.dart';
+import 'material_activity_store.dart';
 
 class DailyLessonResponse {
   const DailyLessonResponse({required this.lesson, required this.source});
@@ -36,12 +37,14 @@ class DailyLessonGateway {
 
   Future<DailyLessonResponse> generate({
     required LocalLearningStats stats,
+    MaterialActivityState materialState = const MaterialActivityState.empty(),
     LearningStage preferredStage = LearningStage.daily,
   }) async {
     if (remote.isConfigured) {
       try {
         final lesson = await remote.generate(
           stats: stats,
+          materialState: materialState,
           preferredStage: preferredStage,
         );
         return DailyLessonResponse(
@@ -50,14 +53,22 @@ class DailyLessonGateway {
         );
       } catch (_) {
         return DailyLessonResponse(
-          lesson: local.generate(stats: stats, preferredStage: preferredStage),
+          lesson: local.generate(
+            stats: stats,
+            materialState: materialState,
+            preferredStage: preferredStage,
+          ),
           source: DailyLessonSource.localFallback,
         );
       }
     }
 
     return DailyLessonResponse(
-      lesson: local.generate(stats: stats, preferredStage: preferredStage),
+      lesson: local.generate(
+        stats: stats,
+        materialState: materialState,
+        preferredStage: preferredStage,
+      ),
       source: DailyLessonSource.local,
     );
   }
@@ -76,6 +87,7 @@ class RemoteDailyLessonService {
 
   Future<DailyLesson> generate({
     required LocalLearningStats stats,
+    MaterialActivityState materialState = const MaterialActivityState.empty(),
     required LearningStage preferredStage,
   }) async {
     final endpoint = Uri.parse(
@@ -99,6 +111,8 @@ class RemoteDailyLessonService {
                 'completed': record.completed,
               },
           ],
+          'favoriteMaterials': materialState.favoriteTitles,
+          'recentMaterials': materialState.recentUsedTitles(limit: 5),
         }),
       );
 
@@ -123,15 +137,17 @@ class LocalDailyLessonService {
 
   DailyLesson generate({
     required LocalLearningStats stats,
+    MaterialActivityState materialState = const MaterialActivityState.empty(),
     required LearningStage preferredStage,
   }) {
-    if (stats.savedTroubleSpots.contains('anything')) {
+    if (stats.savedTroubleSpots.contains('anything') &&
+        materialState.history.isEmpty) {
       return SampleData.lessonForTheme(SampleData.themes.first);
     }
 
-    final theme = SampleData.themes.firstWhere(
-      (item) => item.stage == preferredStage,
-      orElse: () => SampleData.themes.first,
+    final theme = _pickTheme(
+      preferredStage: preferredStage,
+      materialState: materialState,
     );
 
     return generateFromTheme(theme);
@@ -139,6 +155,35 @@ class LocalDailyLessonService {
 
   DailyLesson generateFromTheme(LearningTheme theme) {
     return SampleData.lessonForTheme(theme);
+  }
+
+  LearningTheme _pickTheme({
+    required LearningStage preferredStage,
+    required MaterialActivityState materialState,
+  }) {
+    final stageThemes = SampleData.themes
+        .where((item) => item.stage == preferredStage)
+        .toList();
+    final candidates = stageThemes.isEmpty ? SampleData.themes : stageThemes;
+    final recentTitles = materialState.recentUsedTitles().toSet();
+    final fresh = candidates
+        .where((theme) => !recentTitles.contains(theme.title))
+        .toList();
+    final pool = fresh.isEmpty ? candidates : fresh;
+    final favoritePool = pool
+        .where((theme) => materialState.isFavorite(theme))
+        .toList();
+    final ranked = favoritePool.isEmpty ? pool : favoritePool;
+    final sorted = [...ranked]
+      ..sort((a, b) {
+        final useComparison = materialState
+            .useCount(a)
+            .compareTo(materialState.useCount(b));
+        if (useComparison != 0) return useComparison;
+        return candidates.indexOf(a).compareTo(candidates.indexOf(b));
+      });
+
+    return sorted.first;
   }
 }
 

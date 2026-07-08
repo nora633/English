@@ -6,6 +6,7 @@ import 'services/audio_player_service.dart';
 import 'services/audio_recorder_service.dart';
 import 'services/daily_lesson_service.dart';
 import 'services/local_progress_store.dart';
+import 'services/material_activity_store.dart';
 import 'services/speech_service.dart';
 import 'theme/app_theme.dart';
 import 'views/review_page.dart';
@@ -34,10 +35,12 @@ class _AppShellState extends State<AppShell> {
   final progressStore = const LocalProgressStore();
   final lessonStore = const DailyLessonStore();
   final lessonGateway = const DailyLessonGateway();
+  final materialStore = const MaterialActivityStore();
 
   int index = 0;
   LocalProgress progress = const LocalProgress.empty();
   LocalLearningStats stats = const LocalLearningStats.empty();
+  MaterialActivityState materialState = const MaterialActivityState.empty();
   DailyLesson lesson = SampleData.todayLesson;
   DailyLessonSource lessonSource = DailyLessonSource.local;
   bool isGeneratingLesson = false;
@@ -56,11 +59,15 @@ class _AppShellState extends State<AppShell> {
       (_) => const LocalLearningStats.empty(),
     );
     final storedLesson = await lessonStore.load().catchError((_) => null);
+    final storedMaterialState = await materialStore.load().catchError(
+      (_) => const MaterialActivityState.empty(),
+    );
     if (!mounted) return;
 
     setState(() {
       progress = storedProgress;
       stats = storedStats;
+      materialState = storedMaterialState;
       if (storedLesson != null) {
         lesson = storedLesson.lesson;
         lessonSource = storedLesson.source;
@@ -87,6 +94,7 @@ class _AppShellState extends State<AppShell> {
     setState(() => isGeneratingLesson = true);
     final response = await lessonGateway.generate(
       stats: stats,
+      materialState: materialState,
       preferredStage: LearningStage.daily,
     );
     await lessonStore.save(response).catchError((_) {});
@@ -100,6 +108,9 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> useThemeAsDailyLesson(LearningTheme theme) async {
+    final nextMaterialState = await materialStore
+        .recordUse(theme)
+        .catchError((_) => materialState);
     final generated = const LocalDailyLessonService().generateFromTheme(theme);
     final response = DailyLessonResponse(
       lesson: generated,
@@ -111,8 +122,16 @@ class _AppShellState extends State<AppShell> {
     setState(() {
       lesson = generated;
       lessonSource = response.source;
+      materialState = nextMaterialState;
       index = 0;
     });
+  }
+
+  Future<void> toggleThemeFavorite(LearningTheme theme) async {
+    final nextMaterialState = await materialStore.toggleFavorite(theme);
+    if (!mounted) return;
+
+    setState(() => materialState = nextMaterialState);
   }
 
   @override
@@ -131,7 +150,9 @@ class _AppShellState extends State<AppShell> {
       ),
       ThemeLibraryPage(
         key: const ValueKey('theme-library-page'),
+        materialState: materialState,
         onUseTheme: useThemeAsDailyLesson,
+        onToggleFavorite: toggleThemeFavorite,
       ),
       SpeakingPage(
         key: const ValueKey('speaking-page'),

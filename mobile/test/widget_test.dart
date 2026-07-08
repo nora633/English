@@ -323,9 +323,34 @@ void main() {
     expect(lesson.keyWords.map((word) => word.word), contains('held up'));
   });
 
+  test('reference episode cards generate original practice lessons', () {
+    final service = const LocalDailyLessonService();
+    final episodeSix = SampleData.themes.firstWhere(
+      (theme) => theme.title.contains('S01E06'),
+    );
+    final episodeSeven = SampleData.themes.firstWhere(
+      (theme) => theme.title.contains('S01E07'),
+    );
+
+    final lessonSix = service.generateFromTheme(episodeSix);
+    final lessonSeven = service.generateFromTheme(episodeSeven);
+
+    expect(episodeSix.sourceHint, contains('不保存原台词'));
+    expect(episodeSeven.sourceHint, contains('不保存原台词'));
+    expect(lessonSix.listeningLines.first, contains('trying to help'));
+    expect(lessonSix.keyWords.map((word) => word.word), contains('meant well'));
+    expect(lessonSeven.listeningLines.first, contains('block party'));
+    expect(
+      lessonSeven.keyWords.map((word) => word.word),
+      contains('count me in'),
+    );
+  });
+
   test('material activity store keeps favorites and usage history', () async {
     final store = MaterialActivityStore(now: () => DateTime(2026, 7, 8, 9));
-    final theme = SampleData.themes[3];
+    final theme = SampleData.themes.firstWhere(
+      (theme) => theme.title == '咖啡店偶遇',
+    );
 
     final favorited = await store.toggleFavorite(theme);
     expect(favorited.isFavorite(theme), isTrue);
@@ -623,6 +648,46 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('I got held up after class.'), findsWidgets);
+  });
+
+  testWidgets('uses episode six reference card as today lesson', (
+    tester,
+  ) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('素材'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('东邻西舍 S01E06 灵感：邻里帮忙的分寸'),
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('东邻西舍 S01E06 灵感：邻里帮忙的分寸'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('练习内容为原创改写'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('生成今日 15 分钟练习'),
+      320,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('生成今日 15 分钟练习'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('今日学习'), findsOneWidget);
+    expect(find.textContaining('邻里帮忙的分寸'), findsWidgets);
+    await tester.scrollUntilVisible(
+      find.text('I know you meant well.'),
+      320,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('I know you meant well.'), findsWidgets);
   });
 
   testWidgets('favorites a material from detail page', (tester) async {

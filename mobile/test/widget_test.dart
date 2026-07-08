@@ -1,6 +1,8 @@
 import 'package:english_learning_app/main.dart';
+import 'package:english_learning_app/src/models/learning_models.dart';
 import 'package:english_learning_app/src/services/audio_player_service.dart';
 import 'package:english_learning_app/src/services/audio_recorder_service.dart';
+import 'package:english_learning_app/src/services/daily_lesson_service.dart';
 import 'package:english_learning_app/src/services/exercise_check_service.dart';
 import 'package:english_learning_app/src/services/local_progress_store.dart';
 import 'package:english_learning_app/src/services/speech_service.dart';
@@ -36,9 +38,7 @@ void main() {
 
     expect(find.text('完成进度 0/15 分钟'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('去跟读练习'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('去跟读练习'));
+    await tester.tap(find.text('跟读'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('开始录音'));
     await tester.pumpAndSettle();
@@ -60,9 +60,7 @@ void main() {
     await tester.pumpWidget(testApp());
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('去跟读练习'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('去跟读练习'));
+    await tester.tap(find.text('跟读'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('开始录音'));
     await tester.pump();
@@ -236,6 +234,79 @@ void main() {
     expect(result.reference, contains('Do you want anything'));
   });
 
+  test('remote daily lesson service parses AI backend response', () async {
+    final service = RemoteDailyLessonService(
+      baseUrl: 'http://localhost:8787',
+      clientFactory: () => MockClient((request) async {
+        expect(request.url.path, '/api/generate-daily-lesson');
+        return http.Response(
+          '''
+          {
+            "title": "今日 15 分钟听说训练",
+            "durationMinutes": 15,
+            "completedMinutes": 0,
+            "theme": {
+              "title": "电梯偶遇",
+              "stage": "daily",
+              "kind": "dailyLife",
+              "sourceHint": "AI 生成生活场景",
+              "focus": "寒暄、回应、顺手帮忙",
+              "difficulty": "A2-B1",
+              "previewTitle": "电梯里偶遇邻居",
+              "previewDescription": "短暂寒暄并顺手提供帮助。",
+              "sampleContent": "A: Morning. Are you heading out?\\nB: Yes, I am grabbing coffee.",
+              "practiceSentences": ["Are you heading out?", "I am grabbing coffee."],
+              "keyVocabulary": ["heading out", "grab", "neighbor"]
+            },
+            "keyWords": [
+              {
+                "word": "heading out",
+                "phonetic": "/ˈhedɪŋ aʊt/",
+                "meaning": "准备出门",
+                "usage": "日常问对方是不是要出门",
+                "example": "Are you heading out?",
+                "priority": "必练",
+                "wordRoot": "head 表示朝某方向去",
+                "memoryHint": "头已经朝门口了，就是准备出门。",
+                "collocations": ["head out", "head downstairs"],
+                "relatedWords": ["leave", "go out"],
+                "confusingPoint": "head out 比 leave 更口语。"
+              }
+            ],
+            "grammarPoints": [
+              {
+                "pattern": "Are you + 动词 ing?",
+                "meaning": "你正在/准备做某事吗？",
+                "example": "Are you heading out?",
+                "note": "日常寒暄很自然。"
+              }
+            ],
+            "targetChunks": ["Are you heading out?"],
+            "listeningLines": [
+              "Are you heading out?",
+              "I am grabbing coffee before work.",
+              "Do you want me to bring you one?",
+              "That would be great, thanks.",
+              "I will text you when I get back."
+            ]
+          }
+          ''',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+
+    final lesson = await service.generate(
+      stats: const LocalLearningStats.empty(),
+      preferredStage: LearningStage.daily,
+    );
+
+    expect(lesson.theme.title, '电梯偶遇');
+    expect(lesson.listeningLines, hasLength(5));
+    expect(lesson.keyWords.first.word, 'heading out');
+  });
+
   testWidgets('opens keyword detail from today word card', (tester) async {
     await tester.pumpWidget(testApp());
     await tester.pumpAndSettle();
@@ -360,9 +431,7 @@ void main() {
     await tester.pumpWidget(testApp());
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('去跟读练习'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('去跟读练习'));
+    await tester.tap(find.text('跟读'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('开始录音'));
     await tester.pump();
@@ -389,6 +458,26 @@ void main() {
     expect(find.textContaining('本地检查'), findsOneWidget);
     expect(find.textContaining('分'), findsWidgets);
     expect(find.textContaining('anything'), findsWidgets);
+  });
+
+  testWidgets('generates and shows a saved local daily lesson', (tester) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('今日练习生成'), findsOneWidget);
+    expect(find.text('来源：本地推荐'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('生成今日练习'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('生成今日练习'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    expect(find.text('来源：本地推荐'), findsOneWidget);
+    expect(find.text('精听句子'), findsOneWidget);
   });
 }
 

@@ -35,6 +35,11 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
+    if (request.method === 'POST' && url.pathname === '/api/generate-daily-lesson') {
+      await handleGenerateDailyLesson(request, response);
+      return;
+    }
+
     sendJson(response, 404, { error: 'Not found' });
   } catch (error) {
     sendJson(response, 500, {
@@ -67,6 +72,32 @@ async function handleTranslate(request, response) {
   sendJson(response, 200, result);
 }
 
+async function handleGenerateDailyLesson(request, response) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    sendJson(response, 503, {
+      error: 'OPENAI_API_KEY is not configured on the server.',
+    });
+    return;
+  }
+
+  const body = await readJson(request);
+  const preferredStage =
+    typeof body.preferredStage === 'string' ? body.preferredStage : 'daily';
+  const durationMinutes = Number(body.durationMinutes || 15);
+  const troubleSpots = Array.isArray(body.troubleSpots)
+    ? body.troubleSpots.map((item) => String(item)).filter(Boolean)
+    : [];
+
+  const result = await generateDailyLessonWithOpenAI({
+    apiKey,
+    preferredStage,
+    durationMinutes,
+    troubleSpots,
+  });
+  sendJson(response, 200, result);
+}
+
 async function handleExerciseCheck(request, response, mode) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -94,6 +125,57 @@ async function handleExerciseCheck(request, response, mode) {
     prompt,
   });
   sendJson(response, 200, result);
+}
+
+async function generateDailyLessonWithOpenAI({
+  apiKey,
+  preferredStage,
+  durationMinutes,
+  troubleSpots,
+}) {
+  const openaiResponse = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      input: [
+        {
+          role: 'system',
+          content:
+            'You are designing a 15-minute English lesson for an adult Chinese learner. The learner likes sitcom-style daily life scenes, popular English songs, then later news and articles. Start easy and increase difficulty gradually. Return only valid JSON matching the schema. Use original content only; do not quote copyrighted lyrics or TV scripts.',
+        },
+        {
+          role: 'user',
+          content: [
+            `Preferred stage: ${preferredStage}`,
+            `Duration minutes: ${durationMinutes}`,
+            `Recent trouble spots: ${troubleSpots.join(', ') || 'none'}`,
+            'Create one daily lesson with exactly 5 listening lines, 4 key words, 3 grammar points, and 3 target chunks.',
+          ].join('\n'),
+        },
+      ],
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'waiyudao_daily_lesson',
+          strict: true,
+          schema: dailyLessonSchema(),
+        },
+      },
+    }),
+  });
+
+  const payload = await openaiResponse.json();
+  if (!openaiResponse.ok) {
+    throw new Error(payload.error?.message || 'OpenAI request failed.');
+  }
+
+  const outputText = extractOutputText(payload);
+  const result = JSON.parse(outputText);
+  return sanitizeDailyLesson(result, durationMinutes);
 }
 
 async function translateWithOpenAI({ apiKey, text }) {
@@ -271,6 +353,156 @@ function normalizeLevel(value) {
 function normalizeStringList(value) {
   if (!Array.isArray(value)) return [];
   return value.map((item) => String(item)).filter(Boolean);
+}
+
+function dailyLessonSchema() {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: [
+      'title',
+      'durationMinutes',
+      'completedMinutes',
+      'theme',
+      'keyWords',
+      'grammarPoints',
+      'targetChunks',
+      'listeningLines',
+    ],
+    properties: {
+      title: { type: 'string' },
+      durationMinutes: { type: 'integer' },
+      completedMinutes: { type: 'integer' },
+      theme: {
+        type: 'object',
+        additionalProperties: false,
+        required: [
+          'title',
+          'stage',
+          'kind',
+          'sourceHint',
+          'focus',
+          'difficulty',
+          'previewTitle',
+          'previewDescription',
+          'sampleContent',
+          'practiceSentences',
+          'keyVocabulary',
+        ],
+        properties: {
+          title: { type: 'string' },
+          stage: {
+            type: 'string',
+            enum: ['daily', 'media', 'news', 'reading'],
+          },
+          kind: {
+            type: 'string',
+            enum: ['sitcom', 'song', 'dailyLife', 'news', 'article'],
+          },
+          sourceHint: { type: 'string' },
+          focus: { type: 'string' },
+          difficulty: { type: 'string' },
+          previewTitle: { type: 'string' },
+          previewDescription: { type: 'string' },
+          sampleContent: { type: 'string' },
+          practiceSentences: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+          keyVocabulary: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+        },
+      },
+      keyWords: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'word',
+            'phonetic',
+            'meaning',
+            'usage',
+            'example',
+            'priority',
+            'wordRoot',
+            'memoryHint',
+            'collocations',
+            'relatedWords',
+            'confusingPoint',
+          ],
+          properties: {
+            word: { type: 'string' },
+            phonetic: { type: 'string' },
+            meaning: { type: 'string' },
+            usage: { type: 'string' },
+            example: { type: 'string' },
+            priority: { type: 'string' },
+            wordRoot: { type: 'string' },
+            memoryHint: { type: 'string' },
+            collocations: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+            relatedWords: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+            confusingPoint: { type: 'string' },
+          },
+        },
+      },
+      grammarPoints: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['pattern', 'meaning', 'example', 'note'],
+          properties: {
+            pattern: { type: 'string' },
+            meaning: { type: 'string' },
+            example: { type: 'string' },
+            note: { type: 'string' },
+          },
+        },
+      },
+      targetChunks: {
+        type: 'array',
+        items: { type: 'string' },
+      },
+      listeningLines: {
+        type: 'array',
+        items: { type: 'string' },
+      },
+    },
+  };
+}
+
+function sanitizeDailyLesson(result, durationMinutes) {
+  return {
+    title: String(result.title || '今日 15 分钟听说训练'),
+    durationMinutes: clampMinutes(result.durationMinutes, durationMinutes),
+    completedMinutes: 0,
+    theme: result.theme,
+    keyWords: Array.isArray(result.keyWords) ? result.keyWords.slice(0, 4) : [],
+    grammarPoints: Array.isArray(result.grammarPoints)
+      ? result.grammarPoints.slice(0, 3)
+      : [],
+    targetChunks: Array.isArray(result.targetChunks)
+      ? result.targetChunks.slice(0, 3)
+      : [],
+    listeningLines: Array.isArray(result.listeningLines)
+      ? result.listeningLines.slice(0, 5)
+      : [],
+  };
+}
+
+function clampMinutes(value, fallback) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(5, Math.min(30, Math.round(parsed)));
 }
 
 function extractOutputText(payload) {

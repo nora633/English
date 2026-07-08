@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../data/sample_data.dart';
+import '../models/learning_models.dart';
+import '../services/daily_lesson_service.dart';
 import '../theme/app_theme.dart';
 import 'keyword_detail_page.dart';
 import '../widgets/shared_widgets.dart';
@@ -8,18 +9,25 @@ import '../widgets/shared_widgets.dart';
 class TodayPage extends StatelessWidget {
   const TodayPage({
     super.key,
+    required this.lesson,
+    required this.lessonSource,
+    required this.isGeneratingLesson,
     required this.completedMinutes,
     required this.onStartSpeaking,
     required this.onChooseTheme,
+    required this.onGenerateLesson,
   });
 
+  final DailyLesson lesson;
+  final DailyLessonSource lessonSource;
+  final bool isGeneratingLesson;
   final int completedMinutes;
   final VoidCallback onStartSpeaking;
   final VoidCallback onChooseTheme;
+  final VoidCallback onGenerateLesson;
 
   @override
   Widget build(BuildContext context) {
-    final lesson = SampleData.todayLesson;
     final safeCompleted = completedMinutes.clamp(0, lesson.durationMinutes);
     final progress = safeCompleted / lesson.durationMinutes;
     final completed = safeCompleted >= lesson.durationMinutes;
@@ -66,6 +74,27 @@ class TodayPage extends StatelessWidget {
                   const Spacer(),
                   Text(lesson.theme.difficulty),
                 ],
+              ),
+            ],
+          ),
+        ),
+        CardPanel(
+          title: '今日练习生成',
+          icon: Icons.auto_awesome,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('来源：${lessonSource.label}', style: AppText.emphasis),
+              const SizedBox(height: 6),
+              const Text(
+                '根据当前阶段、复盘弱项和素材偏好生成当天练习。当天生成后会保存到本机。',
+                style: AppText.muted,
+              ),
+              const SizedBox(height: 12),
+              PrimaryButton(
+                icon: isGeneratingLesson ? Icons.hourglass_top : Icons.refresh,
+                text: isGeneratingLesson ? '生成中' : '生成今日练习',
+                onPressed: isGeneratingLesson ? () {} : onGenerateLesson,
               ),
             ],
           ),

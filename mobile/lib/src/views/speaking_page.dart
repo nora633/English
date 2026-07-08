@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../data/sample_data.dart';
+import '../models/learning_models.dart';
 import '../services/audio_player_service.dart';
 import '../services/audio_recorder_service.dart';
 import '../services/exercise_check_service.dart';
@@ -20,6 +21,7 @@ class SpeakingPage extends StatefulWidget {
     required this.onDictationChecked,
     required this.onRecallChecked,
     required this.onFinish,
+    required this.lesson,
     this.audioRecorder,
     this.audioPlayer,
     this.speechClient,
@@ -37,6 +39,7 @@ class SpeakingPage extends StatefulWidget {
   final VoidCallback onDictationChecked;
   final VoidCallback onRecallChecked;
   final VoidCallback onFinish;
+  final DailyLesson lesson;
 
   @override
   State<SpeakingPage> createState() => _SpeakingPageState();
@@ -153,7 +156,7 @@ class _SpeakingPageState extends State<SpeakingPage> {
   }
 
   Future<void> playTargetSentence() async {
-    final text = SampleData.todayLesson.listeningLines.first;
+    final text = widget.lesson.listeningLines.first;
 
     try {
       await audioPlayer.stop();
@@ -206,7 +209,7 @@ class _SpeakingPageState extends State<SpeakingPage> {
   }
 
   Future<void> checkDictation() async {
-    final lesson = SampleData.todayLesson;
+    final lesson = widget.lesson;
     setState(() => isCheckingDictation = true);
 
     final feedback = await exerciseCheckGateway.check(
@@ -224,7 +227,7 @@ class _SpeakingPageState extends State<SpeakingPage> {
   }
 
   Future<void> checkRecall() async {
-    final lesson = SampleData.todayLesson;
+    final lesson = widget.lesson;
     const prompt = '我正准备去买杯咖啡。你要带点什么吗？';
     setState(() => isCheckingRecall = true);
 
@@ -256,7 +259,7 @@ class _SpeakingPageState extends State<SpeakingPage> {
 
   @override
   Widget build(BuildContext context) {
-    final lesson = SampleData.todayLesson;
+    final lesson = widget.lesson;
     final score = SampleData.speakingScore;
     final savedRecording = widget.recordingCompleted == true;
     final showRecordingFeedback = savedRecording || hasRecordingDraft;

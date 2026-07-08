@@ -48,6 +48,14 @@ curl -X POST http://localhost:8787/api/check-recall \
   -d '{"prompt":"我正准备去买杯咖啡。你要带点什么吗？","target":"I was about to grab some coffee. Do you want anything?","answer":"I am going to buy coffee. Do you need anything?"}'
 ```
 
+每日练习生成：
+
+```bash
+curl -X POST http://localhost:8787/api/generate-daily-lesson \
+  -H "Content-Type: application/json" \
+  -d '{"preferredStage":"daily","durationMinutes":15,"troubleSpots":["anything","about to"]}'
+```
+
 ## App 连接方式
 
 打包或运行 Flutter 时传入后端地址：

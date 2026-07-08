@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'data/sample_data.dart';
+import 'models/learning_models.dart';
 import 'services/audio_player_service.dart';
 import 'services/audio_recorder_service.dart';
+import 'services/daily_lesson_service.dart';
 import 'services/local_progress_store.dart';
 import 'services/speech_service.dart';
 import 'theme/app_theme.dart';
@@ -29,10 +32,15 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   final progressStore = const LocalProgressStore();
+  final lessonStore = const DailyLessonStore();
+  final lessonGateway = const DailyLessonGateway();
 
   int index = 0;
   LocalProgress progress = const LocalProgress.empty();
   LocalLearningStats stats = const LocalLearningStats.empty();
+  DailyLesson lesson = SampleData.todayLesson;
+  DailyLessonSource lessonSource = DailyLessonSource.local;
+  bool isGeneratingLesson = false;
 
   @override
   void initState() {
@@ -47,11 +55,16 @@ class _AppShellState extends State<AppShell> {
     final storedStats = await progressStore.loadStats().catchError(
       (_) => const LocalLearningStats.empty(),
     );
+    final storedLesson = await lessonStore.load().catchError((_) => null);
     if (!mounted) return;
 
     setState(() {
       progress = storedProgress;
       stats = storedStats;
+      if (storedLesson != null) {
+        lesson = storedLesson.lesson;
+        lessonSource = storedLesson.source;
+      }
     });
   }
 
@@ -68,15 +81,37 @@ class _AppShellState extends State<AppShell> {
     setState(() => stats = storedStats);
   }
 
+  Future<void> generateDailyLesson() async {
+    if (isGeneratingLesson) return;
+
+    setState(() => isGeneratingLesson = true);
+    final response = await lessonGateway.generate(
+      stats: stats,
+      preferredStage: LearningStage.daily,
+    );
+    await lessonStore.save(response).catchError((_) {});
+    if (!mounted) return;
+
+    setState(() {
+      lesson = response.lesson;
+      lessonSource = response.source;
+      isGeneratingLesson = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final completedMinutes = progress.completedMinutes;
     final pages = [
       TodayPage(
         key: const ValueKey('today-page'),
+        lesson: lesson,
+        lessonSource: lessonSource,
+        isGeneratingLesson: isGeneratingLesson,
         completedMinutes: completedMinutes,
         onStartSpeaking: () => goTo(2),
         onChooseTheme: () => goTo(1),
+        onGenerateLesson: generateDailyLesson,
       ),
       const ThemeLibraryPage(key: ValueKey('theme-library-page')),
       SpeakingPage(
@@ -84,6 +119,7 @@ class _AppShellState extends State<AppShell> {
         audioRecorder: widget.audioRecorder,
         audioPlayer: widget.audioPlayer,
         speechClient: widget.speechClient,
+        lesson: lesson,
         recordingCompleted: progress.recordingCompleted,
         dictationCompleted: progress.dictationCompleted,
         recallCompleted: progress.recallCompleted,

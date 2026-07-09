@@ -197,9 +197,11 @@ class _AppShellState extends State<AppShell> {
         lessonSource: lessonSource,
         isGeneratingLesson: isGeneratingLesson,
         completedMinutes: completedMinutes,
+        reviewQueue: reviewQueue,
         onStartSpeaking: () => goTo(2),
         onChooseTheme: () => goTo(1),
         onGenerateLesson: generateDailyLesson,
+        onOpenReview: () => goTo(4),
       ),
       ThemeLibraryPage(
         key: const ValueKey('theme-library-page'),

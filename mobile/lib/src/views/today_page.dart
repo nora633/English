@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/learning_models.dart';
 import '../services/daily_lesson_service.dart';
+import '../services/review_queue_store.dart';
 import '../theme/app_theme.dart';
 import 'keyword_detail_page.dart';
 import '../widgets/shared_widgets.dart';
@@ -13,24 +14,32 @@ class TodayPage extends StatelessWidget {
     required this.lessonSource,
     required this.isGeneratingLesson,
     required this.completedMinutes,
+    required this.reviewQueue,
     required this.onStartSpeaking,
     required this.onChooseTheme,
     required this.onGenerateLesson,
+    required this.onOpenReview,
   });
 
   final DailyLesson lesson;
   final DailyLessonSource lessonSource;
   final bool isGeneratingLesson;
   final int completedMinutes;
+  final List<ReviewQueueItem> reviewQueue;
   final VoidCallback onStartSpeaking;
   final VoidCallback onChooseTheme;
   final VoidCallback onGenerateLesson;
+  final VoidCallback onOpenReview;
 
   @override
   Widget build(BuildContext context) {
     final safeCompleted = completedMinutes.clamp(0, lesson.durationMinutes);
     final progress = safeCompleted / lesson.durationMinutes;
     final completed = safeCompleted >= lesson.durationMinutes;
+    final pendingReviewItems = reviewQueue
+        .where((item) => !item.mastered)
+        .take(3)
+        .toList();
 
     return AppScrollPage(
       title: '今日学习',
@@ -100,6 +109,45 @@ class TodayPage extends StatelessWidget {
           ),
         ),
         CardPanel(
+          title: '今日复习',
+          icon: Icons.repeat,
+          action: TextButton(onPressed: onOpenReview, child: const Text('去复盘')),
+          child: pendingReviewItems.isEmpty
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '完成跟读、听写或默写后，今天练过的词、词块和句子会自动进入复盘。',
+                      style: AppText.muted,
+                    ),
+                    const SizedBox(height: 12),
+                    SecondaryButton(
+                      icon: Icons.mic,
+                      text: '先去完成练习',
+                      onPressed: onStartSpeaking,
+                    ),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '有 ${reviewQueue.where((item) => !item.mastered).length} 条待复习，先抓最容易忘的 3 条。',
+                      style: AppText.muted,
+                    ),
+                    const SizedBox(height: 12),
+                    for (final item in pendingReviewItems)
+                      _TodayReviewItem(item: item),
+                    const SizedBox(height: 4),
+                    SecondaryButton(
+                      icon: Icons.repeat,
+                      text: '进入复盘队列',
+                      onPressed: onOpenReview,
+                    ),
+                  ],
+                ),
+        ),
+        CardPanel(
           title: '精听句子',
           icon: Icons.headphones,
           child: Column(
@@ -164,6 +212,43 @@ class TodayPage extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _TodayReviewItem extends StatelessWidget {
+  const _TodayReviewItem({required this.item});
+
+  final ReviewQueueItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.subtle,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SmallChip(label: item.kind.label),
+              Text(item.themeTitle, style: AppText.chip),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(item.text, style: AppText.sectionBig),
+          const SizedBox(height: 4),
+          Text(item.note, style: AppText.muted),
+        ],
+      ),
     );
   }
 }

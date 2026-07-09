@@ -575,6 +575,23 @@ void main() {
     await tester.tap(find.text('保存录音'));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('今日'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('今日复习'),
+      360,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('今日复习'), findsOneWidget);
+    expect(find.text('grab'), findsOneWidget);
+
+    await tester.tap(find.text('进入复盘队列'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('学习复盘'), findsOneWidget);
+
     await tester.tap(find.text('复盘'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(

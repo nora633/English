@@ -36,10 +36,11 @@ class TodayPage extends StatelessWidget {
     final safeCompleted = completedMinutes.clamp(0, lesson.durationMinutes);
     final progress = safeCompleted / lesson.durationMinutes;
     final completed = safeCompleted >= lesson.durationMinutes;
-    final pendingReviewItems = reviewQueue
-        .where((item) => !item.mastered)
+    final pendingReviewItems = const ReviewQueueStore()
+        .dueItems(reviewQueue)
         .take(3)
         .toList();
+    final dueCount = const ReviewQueueStore().dueItems(reviewQueue).length;
 
     return AppScrollPage(
       title: '今日学习',
@@ -132,7 +133,7 @@ class TodayPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '有 ${reviewQueue.where((item) => !item.mastered).length} 条待复习，先抓最容易忘的 3 条。',
+                      '今天有 $dueCount 条到期复习，先抓最容易忘的 3 条。',
                       style: AppText.muted,
                     ),
                     const SizedBox(height: 12),

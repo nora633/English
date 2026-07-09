@@ -420,6 +420,18 @@ void main() {
     final searched = store.search(added, 'grab');
     expect(searched, isNotEmpty);
     expect(searched.every((item) => item.mastered == false), isTrue);
+    expect(store.dueItems(added).map((item) => item.text), contains('grab'));
+
+    final reviewed = await store.markReviewed(searched.first.id);
+    final reviewedItem = reviewed.firstWhere(
+      (item) => item.id == searched.first.id,
+    );
+    expect(reviewedItem.reviewCount, 1);
+    expect(reviewedItem.nextReviewAt, DateTime(2026, 7, 9, 9));
+    expect(
+      store.dueItems(reviewed).map((item) => item.id),
+      isNot(contains(searched.first.id)),
+    );
 
     final mastered = await store.markMastered(searched.first.id);
     expect(

@@ -21,6 +21,7 @@ class ReviewPage extends StatefulWidget {
     required this.lessonHistory,
     required this.reviewQueue,
     required this.onMarkReviewItemMastered,
+    required this.onReviewItemReviewed,
     required this.onPreferencesChanged,
     required this.onRestart,
     required this.onDataImported,
@@ -32,6 +33,7 @@ class ReviewPage extends StatefulWidget {
   final List<LessonHistoryRecord> lessonHistory;
   final List<ReviewQueueItem> reviewQueue;
   final Future<void> Function(String id) onMarkReviewItemMastered;
+  final Future<void> Function(String id) onReviewItemReviewed;
   final Future<void> Function(LearningPreferences preferences)
   onPreferencesChanged;
   final VoidCallback onRestart;
@@ -117,6 +119,10 @@ class _ReviewPageState extends State<ReviewPage> {
       widget.reviewQueue,
       searchQuery,
     );
+    final dueReviewCount = reviewQueueStore.dueItems(widget.reviewQueue).length;
+    final pendingReviewCount = reviewQueueStore
+        .pendingItems(widget.reviewQueue)
+        .length;
     final visibleLessonHistory = lessonHistoryStore.search(
       widget.lessonHistory,
       historySearchQuery,
@@ -234,6 +240,8 @@ class _ReviewPageState extends State<ReviewPage> {
                 runSpacing: 8,
                 children: [
                   SmallChip(label: '待复习 ${visibleReviewItems.length} 个'),
+                  SmallChip(label: '今日到期 $dueReviewCount 个'),
+                  SmallChip(label: '未掌握 $pendingReviewCount 个'),
                   SmallChip(label: '已掌握 $masteredCount 个'),
                 ],
               ),
@@ -262,6 +270,9 @@ class _ReviewPageState extends State<ReviewPage> {
                 for (final item in visibleReviewItems.take(10))
                   _ReviewQueueTile(
                     item: item,
+                    onReviewed: () async {
+                      await widget.onReviewItemReviewed(item.id);
+                    },
                     onMastered: () async {
                       await widget.onMarkReviewItemMastered(item.id);
                     },
@@ -489,9 +500,14 @@ class _ExpressionStatusRow extends StatelessWidget {
 }
 
 class _ReviewQueueTile extends StatelessWidget {
-  const _ReviewQueueTile({required this.item, required this.onMastered});
+  const _ReviewQueueTile({
+    required this.item,
+    required this.onReviewed,
+    required this.onMastered,
+  });
 
   final ReviewQueueItem item;
+  final Future<void> Function() onReviewed;
   final Future<void> Function() onMastered;
 
   @override
@@ -520,11 +536,19 @@ class _ReviewQueueTile extends StatelessWidget {
           Text(item.note, style: AppText.accent),
           const SizedBox(height: 6),
           Text(item.themeTitle, style: AppText.muted),
+          const SizedBox(height: 6),
+          Text(_nextReviewLabel(item), style: AppText.muted),
           const SizedBox(height: 10),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Expanded(
-                child: Text('复习 ${item.reviewCount} 次', style: AppText.muted),
+              Text('复习 ${item.reviewCount} 次', style: AppText.muted),
+              TextButton.icon(
+                onPressed: onReviewed,
+                icon: const Icon(Icons.schedule),
+                label: const Text('复习过'),
               ),
               TextButton.icon(
                 onPressed: onMastered,
@@ -536,6 +560,15 @@ class _ReviewQueueTile extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _nextReviewLabel(ReviewQueueItem item) {
+    final now = DateTime.now();
+    if (!item.nextReviewAt.isAfter(now)) return '下次复习：今天';
+
+    final month = item.nextReviewAt.month.toString().padLeft(2, '0');
+    final day = item.nextReviewAt.day.toString().padLeft(2, '0');
+    return '下次复习：$month-$day';
   }
 }
 

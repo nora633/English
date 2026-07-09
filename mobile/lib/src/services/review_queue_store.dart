@@ -29,6 +29,7 @@ class ReviewQueueItem {
     required this.themeTitle,
     required this.note,
     required this.createdAt,
+    required this.nextReviewAt,
     required this.reviewCount,
     required this.mastered,
   });
@@ -39,19 +40,24 @@ class ReviewQueueItem {
   final String themeTitle;
   final String note;
   final DateTime createdAt;
+  final DateTime nextReviewAt;
   final int reviewCount;
   final bool mastered;
 
   factory ReviewQueueItem.fromJson(Map<String, dynamic> json) {
+    final createdAt =
+        DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+        DateTime.fromMillisecondsSinceEpoch(0);
     return ReviewQueueItem(
       id: json['id']?.toString() ?? '',
       text: json['text']?.toString() ?? '',
       kind: ReviewItemKind.fromName(json['kind']?.toString()),
       themeTitle: json['themeTitle']?.toString() ?? '',
       note: json['note']?.toString() ?? '',
-      createdAt:
-          DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
-          DateTime.fromMillisecondsSinceEpoch(0),
+      createdAt: createdAt,
+      nextReviewAt:
+          DateTime.tryParse(json['nextReviewAt']?.toString() ?? '') ??
+          createdAt,
       reviewCount: _intValue(json['reviewCount']),
       mastered: json['mastered'] == true,
     );
@@ -65,12 +71,21 @@ class ReviewQueueItem {
       'themeTitle': themeTitle,
       'note': note,
       'createdAt': createdAt.toIso8601String(),
+      'nextReviewAt': nextReviewAt.toIso8601String(),
       'reviewCount': reviewCount,
       'mastered': mastered,
     };
   }
 
-  ReviewQueueItem copyWith({int? reviewCount, bool? mastered}) {
+  bool isDue(DateTime now) {
+    return !mastered && !nextReviewAt.isAfter(now);
+  }
+
+  ReviewQueueItem copyWith({
+    DateTime? nextReviewAt,
+    int? reviewCount,
+    bool? mastered,
+  }) {
     return ReviewQueueItem(
       id: id,
       text: text,
@@ -78,6 +93,7 @@ class ReviewQueueItem {
       themeTitle: themeTitle,
       note: note,
       createdAt: createdAt,
+      nextReviewAt: nextReviewAt ?? this.nextReviewAt,
       reviewCount: reviewCount ?? this.reviewCount,
       mastered: mastered ?? this.mastered,
     );
@@ -128,6 +144,8 @@ class ReviewQueueStore {
     final next = byId.values.toList()
       ..sort((a, b) {
         if (a.mastered != b.mastered) return a.mastered ? 1 : -1;
+        final dueComparison = a.nextReviewAt.compareTo(b.nextReviewAt);
+        if (dueComparison != 0) return dueComparison;
         return b.createdAt.compareTo(a.createdAt);
       });
     await _save(next.take(80).toList());
@@ -147,9 +165,28 @@ class ReviewQueueStore {
     return load();
   }
 
+  Future<List<ReviewQueueItem>> markReviewed(String id) async {
+    final items = await load();
+    final now = _now();
+    final next = [
+      for (final item in items)
+        if (item.id == id)
+          item.copyWith(
+            reviewCount: item.reviewCount + 1,
+            nextReviewAt: now.add(_nextInterval(item.reviewCount + 1)),
+          )
+        else
+          item,
+    ];
+    await _save(_sortItems(next));
+    return load();
+  }
+
   List<ReviewQueueItem> search(List<ReviewQueueItem> items, String query) {
     final normalized = query.trim().toLowerCase();
-    final visible = items.where((item) => !item.mastered).toList();
+    final visible = normalized.isEmpty
+        ? dueItems(items)
+        : items.where((item) => !item.mastered).toList();
     if (normalized.isEmpty) return visible;
 
     return visible.where((item) {
@@ -158,6 +195,15 @@ class ReviewQueueStore {
           item.note.toLowerCase().contains(normalized) ||
           item.kind.label.toLowerCase().contains(normalized);
     }).toList();
+  }
+
+  List<ReviewQueueItem> dueItems(List<ReviewQueueItem> items) {
+    final now = _now();
+    return _sortItems(items.where((item) => item.isDue(now)).toList());
+  }
+
+  List<ReviewQueueItem> pendingItems(List<ReviewQueueItem> items) {
+    return _sortItems(items.where((item) => !item.mastered).toList());
   }
 
   List<ReviewQueueItem> _itemsForLesson(DailyLesson lesson, DateTime now) {
@@ -170,6 +216,7 @@ class ReviewQueueStore {
           themeTitle: lesson.theme.title,
           note: word.meaning,
           createdAt: now,
+          nextReviewAt: now,
           reviewCount: 0,
           mastered: false,
         ),
@@ -181,6 +228,7 @@ class ReviewQueueStore {
           themeTitle: lesson.theme.title,
           note: '今日目标词块',
           createdAt: now,
+          nextReviewAt: now,
           reviewCount: 0,
           mastered: false,
         ),
@@ -196,6 +244,7 @@ class ReviewQueueStore {
           themeTitle: lesson.theme.title,
           note: '今日精听句',
           createdAt: now,
+          nextReviewAt: now,
           reviewCount: 0,
           mastered: false,
         ),
@@ -227,6 +276,21 @@ class ReviewQueueStore {
 
   String _idFor(ReviewItemKind kind, String text, String themeTitle) {
     return '${kind.name}:${themeTitle.trim().toLowerCase()}:${text.trim().toLowerCase()}';
+  }
+
+  Duration _nextInterval(int reviewCount) {
+    if (reviewCount <= 1) return const Duration(days: 1);
+    if (reviewCount == 2) return const Duration(days: 3);
+    return const Duration(days: 7);
+  }
+
+  List<ReviewQueueItem> _sortItems(List<ReviewQueueItem> items) {
+    return [...items]..sort((a, b) {
+      if (a.mastered != b.mastered) return a.mastered ? 1 : -1;
+      final dueComparison = a.nextReviewAt.compareTo(b.nextReviewAt);
+      if (dueComparison != 0) return dueComparison;
+      return b.createdAt.compareTo(a.createdAt);
+    });
   }
 }
 

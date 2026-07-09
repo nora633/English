@@ -200,6 +200,13 @@ class _AppShellState extends State<AppShell> {
     setState(() => reviewQueue = nextQueue);
   }
 
+  Future<void> markReviewItemReviewed(String id) async {
+    final nextQueue = await reviewQueueStore.markReviewed(id);
+    if (!mounted) return;
+
+    setState(() => reviewQueue = nextQueue);
+  }
+
   Future<void> updatePreferences(LearningPreferences value) async {
     final nextPreferences = await preferencesStore.save(value);
     if (!mounted) return;
@@ -261,6 +268,7 @@ class _AppShellState extends State<AppShell> {
         lessonHistory: lessonHistory,
         reviewQueue: reviewQueue,
         onMarkReviewItemMastered: markReviewItemMastered,
+        onReviewItemReviewed: markReviewItemReviewed,
         onPreferencesChanged: updatePreferences,
         onRestart: () => goTo(0),
         onDataImported: loadProgress,

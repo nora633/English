@@ -26,6 +26,10 @@ exports/
 *.wav
 *.mp3
 
+# Local reference material and legacy resource folders
+EnglishLearningApp/Resources/
+素材来源/
+
 # Logs
 *.log
 

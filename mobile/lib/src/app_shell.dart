@@ -10,6 +10,7 @@ import 'services/learning_preferences_store.dart';
 import 'services/lesson_history_store.dart';
 import 'services/local_progress_store.dart';
 import 'services/material_activity_store.dart';
+import 'services/onboarding_store.dart';
 import 'services/review_queue_store.dart';
 import 'services/speech_service.dart';
 import 'theme/app_theme.dart';
@@ -44,6 +45,7 @@ class _AppShellState extends State<AppShell> {
   final materialStore = const MaterialActivityStore();
   final customMaterialStore = const CustomMaterialStore();
   final reviewQueueStore = const ReviewQueueStore();
+  final onboardingStore = const OnboardingStore();
 
   int index = 0;
   LocalProgress progress = const LocalProgress.empty();
@@ -56,6 +58,7 @@ class _AppShellState extends State<AppShell> {
   DailyLesson lesson = SampleData.todayLesson;
   DailyLessonSource lessonSource = DailyLessonSource.local;
   bool isGeneratingLesson = false;
+  bool showOnboarding = false;
 
   @override
   void initState() {
@@ -86,6 +89,9 @@ class _AppShellState extends State<AppShell> {
     final storedReviewQueue = await reviewQueueStore.load().catchError(
       (_) => const <ReviewQueueItem>[],
     );
+    final seenOnboarding = await onboardingStore.hasSeen().catchError(
+      (_) => true,
+    );
     if (!mounted) return;
 
     setState(() {
@@ -100,6 +106,7 @@ class _AppShellState extends State<AppShell> {
         lesson = storedLesson.lesson;
         lessonSource = storedLesson.source;
       }
+      showOnboarding = !seenOnboarding;
     });
   }
 
@@ -214,6 +221,13 @@ class _AppShellState extends State<AppShell> {
     setState(() => preferences = nextPreferences);
   }
 
+  Future<void> dismissOnboarding() async {
+    await onboardingStore.markSeen().catchError((_) {});
+    if (!mounted) return;
+
+    setState(() => showOnboarding = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final completedMinutes = progress.completedMinutes;
@@ -224,11 +238,14 @@ class _AppShellState extends State<AppShell> {
         lessonSource: lessonSource,
         isGeneratingLesson: isGeneratingLesson,
         completedMinutes: completedMinutes,
+        progress: progress,
         reviewQueue: reviewQueue,
+        showOnboarding: showOnboarding,
         onStartSpeaking: () => goTo(2),
         onChooseTheme: () => goTo(1),
         onGenerateLesson: generateDailyLesson,
         onOpenReview: () => goTo(4),
+        onDismissOnboarding: dismissOnboarding,
       ),
       ThemeLibraryPage(
         key: const ValueKey('theme-library-page'),

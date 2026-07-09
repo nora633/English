@@ -29,11 +29,38 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('今日学习'), findsOneWidget);
+    expect(find.text('第一次来外语岛'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('今日三步流程'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('今日三步流程'), findsOneWidget);
     expect(find.text('今日'), findsOneWidget);
     expect(find.text('素材'), findsOneWidget);
     expect(find.text('跟读'), findsOneWidget);
     expect(find.text('翻译'), findsOneWidget);
     expect(find.text('复盘'), findsOneWidget);
+  });
+
+  testWidgets('dismisses onboarding and keeps it hidden next launch', (
+    tester,
+  ) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('第一次来外语岛'), findsOneWidget);
+    await tester.tap(find.text('开始今日流程'));
+    await tester.pumpAndSettle();
+    expect(find.text('第一次来外语岛'), findsNothing);
+
+    await tester.pumpWidget(Container());
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('第一次来外语岛'), findsNothing);
   });
 
   testWidgets('updates today progress after saving a recording', (
@@ -555,6 +582,14 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(
+        find.text('学习日历'),
+        320,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('学习日历'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
         find.text('掌握和待复习'),
         360,
         scrollable: find.byType(Scrollable).first,
@@ -639,6 +674,57 @@ void main() {
     expect(find.text('I was about to...'), findsOneWidget);
 
     await tester.tap(find.text('标记掌握').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('已掌握'), findsWidgets);
+  });
+
+  testWidgets('practices due review cards from the review page', (tester) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('跟读'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('开始录音'));
+    await tester.pump();
+    await tester.tap(find.text('停止录音'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('保存录音'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('保存录音'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('复盘'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('今日复盘练习'),
+      320,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('今日复盘练习'), findsOneWidget);
+    expect(find.text('显示答案'), findsOneWidget);
+
+    await tester.tap(find.text('显示答案'));
+    await tester.pumpAndSettle();
+    expect(find.text('参考答案'), findsOneWidget);
+    expect(find.text('想起来了'), findsOneWidget);
+    expect(find.text('还要再练'), findsOneWidget);
+
+    await tester.tap(find.text('还要再练'));
+    await tester.pumpAndSettle();
+    expect(find.text('显示答案'), findsOneWidget);
+
+    await tester.tap(find.text('显示答案'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('想起来了'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('掌握和待复习'),
+      360,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     expect(find.textContaining('已掌握'), findsWidgets);
   });
@@ -782,6 +868,12 @@ void main() {
     await tester.pumpWidget(testApp());
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('今日练习生成'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     expect(find.text('今日练习生成'), findsOneWidget);
     expect(find.text('来源：本地推荐'), findsOneWidget);
 

@@ -102,13 +102,16 @@ class LocalProgressStore {
     );
   }
 
-  Future<void> save(LocalProgress progress) async {
+  Future<void> save(LocalProgress progress, {int targetMinutes = 15}) async {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setBool(_recordingKey, progress.recordingCompleted);
     await prefs.setBool(_dictationKey, progress.dictationCompleted);
     await prefs.setBool(_recallKey, progress.recallCompleted);
-    await prefs.setBool(_completedDateKey, progress.completedMinutes >= 15);
+    await prefs.setBool(
+      _completedDateKey,
+      progress.completedMinutes >= targetMinutes,
+    );
     await prefs.setInt(_minutesKey, progress.completedMinutes);
 
     if (progress.completedMinutes > 0) {

@@ -270,7 +270,10 @@ class SampleData {
     ],
   );
 
-  static DailyLesson lessonForTheme(LearningTheme theme) {
+  static DailyLesson lessonForTheme(
+    LearningTheme theme, {
+    int durationMinutes = 15,
+  }) {
     final lines = _listeningLinesFor(theme);
     final keywords = theme.keyVocabulary
         .take(4)
@@ -278,8 +281,8 @@ class SampleData {
         .toList();
 
     return DailyLesson(
-      title: '今日 15 分钟听说训练',
-      durationMinutes: 15,
+      title: '今日 $durationMinutes 分钟听说训练',
+      durationMinutes: durationMinutes,
       completedMinutes: 0,
       theme: theme,
       keyWords: keywords.isEmpty ? todayLesson.keyWords : keywords,

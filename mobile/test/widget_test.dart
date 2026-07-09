@@ -6,6 +6,7 @@ import 'package:english_learning_app/src/services/audio_recorder_service.dart';
 import 'package:english_learning_app/src/services/custom_material_store.dart';
 import 'package:english_learning_app/src/services/daily_lesson_service.dart';
 import 'package:english_learning_app/src/services/exercise_check_service.dart';
+import 'package:english_learning_app/src/services/learning_preferences_store.dart';
 import 'package:english_learning_app/src/services/lesson_history_store.dart';
 import 'package:english_learning_app/src/services/local_progress_store.dart';
 import 'package:english_learning_app/src/services/material_activity_store.dart';
@@ -389,6 +390,22 @@ void main() {
     expect(loaded.single.sampleContent, contains('gate B12'));
   });
 
+  test('learning preferences store saves goal and preferred stage', () async {
+    const store = LearningPreferencesStore();
+
+    final saved = await store.save(
+      const LearningPreferences(
+        dailyGoalMinutes: 10,
+        preferredStage: LearningStage.media,
+      ),
+    );
+    final loaded = await store.load();
+
+    expect(saved.dailyGoalMinutes, 10);
+    expect(loaded.dailyGoalMinutes, 10);
+    expect(loaded.preferredStage, LearningStage.media);
+  });
+
   test('review queue stores lesson expressions and supports mastery', () async {
     final store = ReviewQueueStore(now: () => DateTime(2026, 7, 8, 9));
 
@@ -767,6 +784,49 @@ void main() {
 
     expect(find.text('来源：本地推荐'), findsOneWidget);
     expect(find.text('精听句子'), findsOneWidget);
+  });
+
+  testWidgets('uses local learning plan when generating today lesson', (
+    tester,
+  ) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('复盘'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('学习计划'),
+      360,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('10 分钟'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('影视歌曲'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('今日'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('生成今日练习'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('生成今日练习'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('完成进度 0/10 分钟'),
+      -420,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('今日 10 分钟听说训练'), findsOneWidget);
+    expect(find.textContaining('家庭晚餐小插曲'), findsWidgets);
+    expect(find.text('完成进度 0/10 分钟'), findsOneWidget);
   });
 
   testWidgets('uses material detail as today lesson', (tester) async {

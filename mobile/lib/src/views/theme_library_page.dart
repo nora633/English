@@ -11,6 +11,7 @@ class ThemeLibraryPage extends StatefulWidget {
     super.key,
     required this.materialState,
     required this.customThemes,
+    required this.dailyGoalMinutes,
     required this.onUseTheme,
     required this.onToggleFavorite,
     required this.onSaveCustomTheme,
@@ -18,6 +19,7 @@ class ThemeLibraryPage extends StatefulWidget {
 
   final MaterialActivityState materialState;
   final List<LearningTheme> customThemes;
+  final int dailyGoalMinutes;
   final Future<void> Function(LearningTheme theme) onUseTheme;
   final Future<void> Function(LearningTheme theme) onToggleFavorite;
   final Future<void> Function(LearningTheme theme) onSaveCustomTheme;
@@ -81,6 +83,7 @@ class _ThemeLibraryPageState extends State<ThemeLibraryPage> {
                   builder: (_) => ThemeDetailPage(
                     theme: theme,
                     materialState: widget.materialState,
+                    dailyGoalMinutes: widget.dailyGoalMinutes,
                     onUseTheme: widget.onUseTheme,
                     onToggleFavorite: widget.onToggleFavorite,
                   ),
@@ -262,12 +265,14 @@ class ThemeDetailPage extends StatefulWidget {
     super.key,
     required this.theme,
     required this.materialState,
+    required this.dailyGoalMinutes,
     required this.onUseTheme,
     required this.onToggleFavorite,
   });
 
   final LearningTheme theme;
   final MaterialActivityState materialState;
+  final int dailyGoalMinutes;
   final Future<void> Function(LearningTheme theme) onUseTheme;
   final Future<void> Function(LearningTheme theme) onToggleFavorite;
 
@@ -394,11 +399,11 @@ class _ThemeDetailPageState extends State<ThemeDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('根据“先日常、再影视歌曲、再新闻、最后报刊精读”的路径生成 15 分钟练习。'),
+                  Text('根据当前学习计划生成 ${widget.dailyGoalMinutes} 分钟练习。'),
                   const SizedBox(height: 12),
                   PrimaryButton(
                     icon: Icons.auto_awesome,
-                    text: '生成今日 15 分钟练习',
+                    text: '生成今日 ${widget.dailyGoalMinutes} 分钟练习',
                     onPressed: () async {
                       await widget.onUseTheme(theme);
                       if (!context.mounted) return;

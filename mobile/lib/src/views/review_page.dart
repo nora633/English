@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../data/sample_data.dart';
+import '../models/learning_models.dart';
+import '../services/learning_preferences_store.dart';
 import '../services/lesson_history_store.dart';
 import '../services/local_progress_store.dart';
 import '../services/review_queue_store.dart';
@@ -14,19 +16,24 @@ class ReviewPage extends StatefulWidget {
   const ReviewPage({
     super.key,
     required this.completedMinutes,
+    required this.preferences,
     required this.stats,
     required this.lessonHistory,
     required this.reviewQueue,
     required this.onMarkReviewItemMastered,
+    required this.onPreferencesChanged,
     required this.onRestart,
     required this.onDataImported,
   });
 
   final int completedMinutes;
+  final LearningPreferences preferences;
   final LocalLearningStats stats;
   final List<LessonHistoryRecord> lessonHistory;
   final List<ReviewQueueItem> reviewQueue;
   final Future<void> Function(String id) onMarkReviewItemMastered;
+  final Future<void> Function(LearningPreferences preferences)
+  onPreferencesChanged;
   final VoidCallback onRestart;
   final Future<void> Function() onDataImported;
 
@@ -39,6 +46,7 @@ class _ReviewPageState extends State<ReviewPage> {
   final searchController = TextEditingController();
   final historySearchController = TextEditingController();
   final lessonHistoryStore = const LessonHistoryStore();
+  final preferencesStore = const LearningPreferencesStore();
   final progressStore = const LocalProgressStore();
   final reviewQueueStore = const ReviewQueueStore();
   String? backupCode;
@@ -58,10 +66,12 @@ class _ReviewPageState extends State<ReviewPage> {
     final progressBackup = await progressStore.exportBackup();
     final decoded = jsonDecode(progressBackup);
     final lessonHistory = await lessonHistoryStore.exportItems();
+    final preferences = await preferencesStore.exportItem();
     final reviewQueue = await reviewQueueStore.exportItems();
     final exported = jsonEncode({
       if (decoded is Map<String, dynamic>) ...decoded,
       'lessonHistory': lessonHistory,
+      'learningPreferences': preferences,
       'reviewQueue': reviewQueue,
     });
     if (!mounted) return;
@@ -78,6 +88,7 @@ class _ReviewPageState extends State<ReviewPage> {
       await progressStore.importBackup(backupController.text);
       if (decoded is Map<String, dynamic>) {
         await lessonHistoryStore.importItems(decoded['lessonHistory']);
+        await preferencesStore.importItem(decoded['learningPreferences']);
         await reviewQueueStore.importItems(decoded['reviewQueue']);
       }
       await widget.onDataImported();
@@ -135,6 +146,56 @@ class _ReviewPageState extends State<ReviewPage> {
               ),
             ),
           ],
+        ),
+        CardPanel(
+          title: '学习计划',
+          icon: Icons.tune,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('这些设置只保存在本机，会影响明天生成的今日练习。', style: AppText.muted),
+              const SizedBox(height: 14),
+              const Text('每日目标', style: AppText.emphasis),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final minutes in const [10, 15])
+                    ChoiceChip(
+                      label: Text('$minutes 分钟'),
+                      selected: widget.preferences.dailyGoalMinutes == minutes,
+                      onSelected: (_) {
+                        widget.onPreferencesChanged(
+                          widget.preferences.copyWith(
+                            dailyGoalMinutes: minutes,
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const Text('默认素材阶段', style: AppText.emphasis),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final stage in LearningStage.values)
+                    ChoiceChip(
+                      label: Text(stage.label),
+                      selected: widget.preferences.preferredStage == stage,
+                      onSelected: (_) {
+                        widget.onPreferencesChanged(
+                          widget.preferences.copyWith(preferredStage: stage),
+                        );
+                      },
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
         CardPanel(
           title: '最近记录',

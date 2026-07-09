@@ -6,6 +6,7 @@ import 'services/audio_player_service.dart';
 import 'services/audio_recorder_service.dart';
 import 'services/custom_material_store.dart';
 import 'services/daily_lesson_service.dart';
+import 'services/learning_preferences_store.dart';
 import 'services/lesson_history_store.dart';
 import 'services/local_progress_store.dart';
 import 'services/material_activity_store.dart';
@@ -38,6 +39,7 @@ class _AppShellState extends State<AppShell> {
   final progressStore = const LocalProgressStore();
   final lessonStore = const DailyLessonStore();
   final lessonGateway = const DailyLessonGateway();
+  final preferencesStore = const LearningPreferencesStore();
   final lessonHistoryStore = const LessonHistoryStore();
   final materialStore = const MaterialActivityStore();
   final customMaterialStore = const CustomMaterialStore();
@@ -45,6 +47,7 @@ class _AppShellState extends State<AppShell> {
 
   int index = 0;
   LocalProgress progress = const LocalProgress.empty();
+  LearningPreferences preferences = const LearningPreferences.defaults();
   LocalLearningStats stats = const LocalLearningStats.empty();
   List<LessonHistoryRecord> lessonHistory = const [];
   MaterialActivityState materialState = const MaterialActivityState.empty();
@@ -67,6 +70,9 @@ class _AppShellState extends State<AppShell> {
     final storedStats = await progressStore.loadStats().catchError(
       (_) => const LocalLearningStats.empty(),
     );
+    final storedPreferences = await preferencesStore.load().catchError(
+      (_) => const LearningPreferences.defaults(),
+    );
     final storedLesson = await lessonStore.load().catchError((_) => null);
     final storedLessonHistory = await lessonHistoryStore.load().catchError(
       (_) => const <LessonHistoryRecord>[],
@@ -84,6 +90,7 @@ class _AppShellState extends State<AppShell> {
 
     setState(() {
       progress = storedProgress;
+      preferences = storedPreferences;
       stats = storedStats;
       lessonHistory = storedLessonHistory;
       materialState = storedMaterialState;
@@ -100,7 +107,9 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> updateProgress(LocalProgress value) async {
     setState(() => progress = value);
-    await progressStore.save(value).catchError((_) {});
+    await progressStore
+        .save(value, targetMinutes: preferences.dailyGoalMinutes)
+        .catchError((_) {});
     final storedReviewQueue = await reviewQueueStore
         .addLesson(lesson)
         .catchError((_) => reviewQueue);
@@ -123,7 +132,8 @@ class _AppShellState extends State<AppShell> {
       stats: stats,
       materialState: materialState,
       availableThemes: [...SampleData.themes, ...customThemes],
-      preferredStage: LearningStage.daily,
+      preferredStage: preferences.preferredStage,
+      durationMinutes: preferences.dailyGoalMinutes,
     );
     await lessonStore.save(response).catchError((_) {});
     final storedLessonHistory = await lessonHistoryStore
@@ -146,7 +156,10 @@ class _AppShellState extends State<AppShell> {
     final nextMaterialState = await materialStore
         .recordUse(theme)
         .catchError((_) => materialState);
-    final generated = const LocalDailyLessonService().generateFromTheme(theme);
+    final generated = const LocalDailyLessonService().generateFromTheme(
+      theme,
+      durationMinutes: preferences.dailyGoalMinutes,
+    );
     final response = DailyLessonResponse(
       lesson: generated,
       source: DailyLessonSource.local,
@@ -187,6 +200,13 @@ class _AppShellState extends State<AppShell> {
     setState(() => reviewQueue = nextQueue);
   }
 
+  Future<void> updatePreferences(LearningPreferences value) async {
+    final nextPreferences = await preferencesStore.save(value);
+    if (!mounted) return;
+
+    setState(() => preferences = nextPreferences);
+  }
+
   @override
   Widget build(BuildContext context) {
     final completedMinutes = progress.completedMinutes;
@@ -207,6 +227,7 @@ class _AppShellState extends State<AppShell> {
         key: const ValueKey('theme-library-page'),
         materialState: materialState,
         customThemes: customThemes,
+        dailyGoalMinutes: preferences.dailyGoalMinutes,
         onUseTheme: useThemeAsDailyLesson,
         onToggleFavorite: toggleThemeFavorite,
         onSaveCustomTheme: saveCustomTheme,
@@ -235,10 +256,12 @@ class _AppShellState extends State<AppShell> {
       ReviewPage(
         key: const ValueKey('review-page'),
         completedMinutes: completedMinutes,
+        preferences: preferences,
         stats: stats,
         lessonHistory: lessonHistory,
         reviewQueue: reviewQueue,
         onMarkReviewItemMastered: markReviewItemMastered,
+        onPreferencesChanged: updatePreferences,
         onRestart: () => goTo(0),
         onDataImported: loadProgress,
       ),

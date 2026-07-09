@@ -40,6 +40,7 @@ class DailyLessonGateway {
     MaterialActivityState materialState = const MaterialActivityState.empty(),
     List<LearningTheme> availableThemes = SampleData.themes,
     LearningStage preferredStage = LearningStage.daily,
+    int durationMinutes = 15,
   }) async {
     if (remote.isConfigured) {
       try {
@@ -48,6 +49,7 @@ class DailyLessonGateway {
           materialState: materialState,
           availableThemes: availableThemes,
           preferredStage: preferredStage,
+          durationMinutes: durationMinutes,
         );
         return DailyLessonResponse(
           lesson: lesson,
@@ -60,6 +62,7 @@ class DailyLessonGateway {
             materialState: materialState,
             availableThemes: availableThemes,
             preferredStage: preferredStage,
+            durationMinutes: durationMinutes,
           ),
           source: DailyLessonSource.localFallback,
         );
@@ -72,6 +75,7 @@ class DailyLessonGateway {
         materialState: materialState,
         availableThemes: availableThemes,
         preferredStage: preferredStage,
+        durationMinutes: durationMinutes,
       ),
       source: DailyLessonSource.local,
     );
@@ -94,6 +98,7 @@ class RemoteDailyLessonService {
     MaterialActivityState materialState = const MaterialActivityState.empty(),
     List<LearningTheme> availableThemes = SampleData.themes,
     required LearningStage preferredStage,
+    int durationMinutes = 15,
   }) async {
     final endpoint = Uri.parse(
       '${baseUrl.replaceFirst(RegExp(r'/$'), '')}/api/generate-daily-lesson',
@@ -106,7 +111,7 @@ class RemoteDailyLessonService {
         headers: const {'Content-Type': 'application/json'},
         body: jsonEncode({
           'preferredStage': preferredStage.name,
-          'durationMinutes': 15,
+          'durationMinutes': durationMinutes,
           'troubleSpots': stats.savedTroubleSpots,
           'recentHistory': [
             for (final record in stats.history)
@@ -155,10 +160,14 @@ class LocalDailyLessonService {
     MaterialActivityState materialState = const MaterialActivityState.empty(),
     List<LearningTheme> availableThemes = SampleData.themes,
     required LearningStage preferredStage,
+    int durationMinutes = 15,
   }) {
     if (stats.savedTroubleSpots.contains('anything') &&
         materialState.history.isEmpty) {
-      return SampleData.lessonForTheme(SampleData.themes.first);
+      return SampleData.lessonForTheme(
+        SampleData.themes.first,
+        durationMinutes: durationMinutes,
+      );
     }
 
     final theme = _pickTheme(
@@ -167,11 +176,14 @@ class LocalDailyLessonService {
       availableThemes: availableThemes,
     );
 
-    return generateFromTheme(theme);
+    return generateFromTheme(theme, durationMinutes: durationMinutes);
   }
 
-  DailyLesson generateFromTheme(LearningTheme theme) {
-    return SampleData.lessonForTheme(theme);
+  DailyLesson generateFromTheme(
+    LearningTheme theme, {
+    int durationMinutes = 15,
+  }) {
+    return SampleData.lessonForTheme(theme, durationMinutes: durationMinutes);
   }
 
   LearningTheme _pickTheme({

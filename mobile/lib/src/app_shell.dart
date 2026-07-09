@@ -6,6 +6,7 @@ import 'services/audio_player_service.dart';
 import 'services/audio_recorder_service.dart';
 import 'services/custom_material_store.dart';
 import 'services/daily_lesson_service.dart';
+import 'services/lesson_history_store.dart';
 import 'services/local_progress_store.dart';
 import 'services/material_activity_store.dart';
 import 'services/review_queue_store.dart';
@@ -37,6 +38,7 @@ class _AppShellState extends State<AppShell> {
   final progressStore = const LocalProgressStore();
   final lessonStore = const DailyLessonStore();
   final lessonGateway = const DailyLessonGateway();
+  final lessonHistoryStore = const LessonHistoryStore();
   final materialStore = const MaterialActivityStore();
   final customMaterialStore = const CustomMaterialStore();
   final reviewQueueStore = const ReviewQueueStore();
@@ -44,6 +46,7 @@ class _AppShellState extends State<AppShell> {
   int index = 0;
   LocalProgress progress = const LocalProgress.empty();
   LocalLearningStats stats = const LocalLearningStats.empty();
+  List<LessonHistoryRecord> lessonHistory = const [];
   MaterialActivityState materialState = const MaterialActivityState.empty();
   List<ReviewQueueItem> reviewQueue = const [];
   List<LearningTheme> customThemes = const [];
@@ -65,6 +68,9 @@ class _AppShellState extends State<AppShell> {
       (_) => const LocalLearningStats.empty(),
     );
     final storedLesson = await lessonStore.load().catchError((_) => null);
+    final storedLessonHistory = await lessonHistoryStore.load().catchError(
+      (_) => const <LessonHistoryRecord>[],
+    );
     final storedMaterialState = await materialStore.load().catchError(
       (_) => const MaterialActivityState.empty(),
     );
@@ -79,6 +85,7 @@ class _AppShellState extends State<AppShell> {
     setState(() {
       progress = storedProgress;
       stats = storedStats;
+      lessonHistory = storedLessonHistory;
       materialState = storedMaterialState;
       reviewQueue = storedReviewQueue;
       customThemes = storedCustomThemes;
@@ -119,11 +126,18 @@ class _AppShellState extends State<AppShell> {
       preferredStage: LearningStage.daily,
     );
     await lessonStore.save(response).catchError((_) {});
+    final storedLessonHistory = await lessonHistoryStore
+        .recordLesson(
+          lesson: response.lesson,
+          sourceLabel: response.source.label,
+        )
+        .catchError((_) => lessonHistory);
     if (!mounted) return;
 
     setState(() {
       lesson = response.lesson;
       lessonSource = response.source;
+      lessonHistory = storedLessonHistory;
       isGeneratingLesson = false;
     });
   }
@@ -138,11 +152,15 @@ class _AppShellState extends State<AppShell> {
       source: DailyLessonSource.local,
     );
     await lessonStore.save(response).catchError((_) {});
+    final storedLessonHistory = await lessonHistoryStore
+        .recordLesson(lesson: generated, sourceLabel: '素材生成')
+        .catchError((_) => lessonHistory);
     if (!mounted) return;
 
     setState(() {
       lesson = generated;
       lessonSource = response.source;
+      lessonHistory = storedLessonHistory;
       materialState = nextMaterialState;
       index = 0;
     });
@@ -216,6 +234,7 @@ class _AppShellState extends State<AppShell> {
         key: const ValueKey('review-page'),
         completedMinutes: completedMinutes,
         stats: stats,
+        lessonHistory: lessonHistory,
         reviewQueue: reviewQueue,
         onMarkReviewItemMastered: markReviewItemMastered,
         onRestart: () => goTo(0),

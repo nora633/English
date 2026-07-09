@@ -6,6 +6,7 @@ import 'package:english_learning_app/src/services/audio_recorder_service.dart';
 import 'package:english_learning_app/src/services/custom_material_store.dart';
 import 'package:english_learning_app/src/services/daily_lesson_service.dart';
 import 'package:english_learning_app/src/services/exercise_check_service.dart';
+import 'package:english_learning_app/src/services/lesson_history_store.dart';
 import 'package:english_learning_app/src/services/local_progress_store.dart';
 import 'package:english_learning_app/src/services/material_activity_store.dart';
 import 'package:english_learning_app/src/services/review_queue_store.dart';
@@ -424,6 +425,25 @@ void main() {
     expect(imported.map((item) => item.text), contains('I was about to...'));
   });
 
+  test('lesson history stores and searches practiced lessons', () async {
+    final store = LessonHistoryStore(now: () => DateTime(2026, 7, 8, 9));
+
+    final history = await store.recordLesson(
+      lesson: SampleData.todayLesson,
+      sourceLabel: '本地推荐',
+    );
+    expect(history.single.lesson.theme.title, '邻里寒暄');
+    expect(store.search(history, 'grab'), hasLength(1));
+    expect(store.search(history, 'not-found'), isEmpty);
+
+    final exported = await store.exportItems();
+    SharedPreferences.setMockInitialValues({});
+    const targetStore = LessonHistoryStore();
+    await targetStore.importItems(exported);
+    final imported = await targetStore.load();
+    expect(imported.single.lesson.listeningLines.first, contains('coffee'));
+  });
+
   test('local daily recommendation avoids recently used materials', () {
     final service = const LocalDailyLessonService();
     final lesson = service.generate(
@@ -575,6 +595,48 @@ void main() {
     await tester.tap(find.text('标记掌握').first);
     await tester.pumpAndSettle();
     expect(find.textContaining('已掌握'), findsWidgets);
+  });
+
+  testWidgets('records used lessons in searchable lesson history', (
+    tester,
+  ) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('素材'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('东邻西舍 S01E07 灵感：社区活动接话'),
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('东邻西舍 S01E07 灵感：社区活动接话'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('生成今日 15 分钟练习'),
+      320,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('生成今日 15 分钟练习'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('复盘'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('练习历史搜索'),
+      360,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('练习历史搜索'), findsOneWidget);
+    expect(find.textContaining('社区活动接话'), findsWidgets);
+
+    await tester.enterText(find.byType(TextField).first, 'block party');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('社区活动接话'), findsWidgets);
   });
 
   testWidgets('translates Chinese into English and Korean variants', (

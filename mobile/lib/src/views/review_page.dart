@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../data/sample_data.dart';
+import '../services/lesson_history_store.dart';
 import '../services/local_progress_store.dart';
 import '../services/review_queue_store.dart';
 import '../theme/app_theme.dart';
@@ -14,6 +15,7 @@ class ReviewPage extends StatefulWidget {
     super.key,
     required this.completedMinutes,
     required this.stats,
+    required this.lessonHistory,
     required this.reviewQueue,
     required this.onMarkReviewItemMastered,
     required this.onRestart,
@@ -22,6 +24,7 @@ class ReviewPage extends StatefulWidget {
 
   final int completedMinutes;
   final LocalLearningStats stats;
+  final List<LessonHistoryRecord> lessonHistory;
   final List<ReviewQueueItem> reviewQueue;
   final Future<void> Function(String id) onMarkReviewItemMastered;
   final VoidCallback onRestart;
@@ -34,25 +37,31 @@ class ReviewPage extends StatefulWidget {
 class _ReviewPageState extends State<ReviewPage> {
   final backupController = TextEditingController();
   final searchController = TextEditingController();
+  final historySearchController = TextEditingController();
+  final lessonHistoryStore = const LessonHistoryStore();
   final progressStore = const LocalProgressStore();
   final reviewQueueStore = const ReviewQueueStore();
   String? backupCode;
   String? backupMessage;
   String searchQuery = '';
+  String historySearchQuery = '';
 
   @override
   void dispose() {
     backupController.dispose();
     searchController.dispose();
+    historySearchController.dispose();
     super.dispose();
   }
 
   Future<void> exportBackup() async {
     final progressBackup = await progressStore.exportBackup();
     final decoded = jsonDecode(progressBackup);
+    final lessonHistory = await lessonHistoryStore.exportItems();
     final reviewQueue = await reviewQueueStore.exportItems();
     final exported = jsonEncode({
       if (decoded is Map<String, dynamic>) ...decoded,
+      'lessonHistory': lessonHistory,
       'reviewQueue': reviewQueue,
     });
     if (!mounted) return;
@@ -68,6 +77,7 @@ class _ReviewPageState extends State<ReviewPage> {
       final decoded = jsonDecode(backupController.text.trim());
       await progressStore.importBackup(backupController.text);
       if (decoded is Map<String, dynamic>) {
+        await lessonHistoryStore.importItems(decoded['lessonHistory']);
         await reviewQueueStore.importItems(decoded['reviewQueue']);
       }
       await widget.onDataImported();
@@ -95,6 +105,10 @@ class _ReviewPageState extends State<ReviewPage> {
     final visibleReviewItems = reviewQueueStore.search(
       widget.reviewQueue,
       searchQuery,
+    );
+    final visibleLessonHistory = lessonHistoryStore.search(
+      widget.lessonHistory,
+      historySearchQuery,
     );
     final masteredCount = widget.reviewQueue
         .where((item) => item.mastered)
@@ -191,6 +205,36 @@ class _ReviewPageState extends State<ReviewPage> {
                       await widget.onMarkReviewItemMastered(item.id);
                     },
                   ),
+            ],
+          ),
+        ),
+        CardPanel(
+          title: '练习历史搜索',
+          icon: Icons.manage_search,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: historySearchController,
+                onChanged: (value) =>
+                    setState(() => historySearchQuery = value),
+                decoration: InputDecoration(
+                  hintText: '搜索练过的素材、句子、关键词',
+                  prefixIcon: const Icon(Icons.search),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.line),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (visibleLessonHistory.isEmpty)
+                const Text('生成或使用今日练习后，这里会保留最近练过的内容。', style: AppText.muted)
+              else
+                for (final item in visibleLessonHistory.take(6))
+                  _LessonHistoryTile(record: item),
             ],
           ),
         ),
@@ -431,6 +475,64 @@ class _ReviewQueueTile extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _LessonHistoryTile extends StatelessWidget {
+  const _LessonHistoryTile({required this.record});
+
+  final LessonHistoryRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final lesson = record.lesson;
+    final firstLine = lesson.listeningLines.isEmpty
+        ? lesson.theme.sampleContent
+        : lesson.listeningLines.first;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.subtle,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(lesson.theme.title, style: AppText.emphasis),
+              ),
+              SmallChip(label: record.sourceLabel),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(_dateLabel(record.savedAt), style: AppText.muted),
+          const SizedBox(height: 8),
+          Text(firstLine),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final word in lesson.keyWords.take(3))
+                SmallChip(label: word.word),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _dateLabel(DateTime value) {
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '${value.year}-$month-$day $hour:$minute';
   }
 }
 

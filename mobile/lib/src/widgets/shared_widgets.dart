@@ -9,30 +9,33 @@ class AppScrollPage extends StatelessWidget {
     required this.title,
     required this.children,
     this.leading,
+    this.showTitle = true,
   });
 
   final String title;
   final List<Widget> children;
   final Widget? leading;
+  final bool showTitle;
 
   @override
   Widget build(BuildContext context) {
     return CustomScrollView(
       slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-          sliver: SliverToBoxAdapter(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                if (leading != null) ...[leading!, const SizedBox(width: 12)],
-                Expanded(child: Text(title, style: AppText.pageTitle)),
-              ],
+        if (showTitle)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            sliver: SliverToBoxAdapter(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (leading != null) ...[leading!, const SizedBox(width: 12)],
+                  Expanded(child: Text(title, style: AppText.pageTitle)),
+                ],
+              ),
             ),
           ),
-        ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 140),
+          padding: EdgeInsets.fromLTRB(20, showTitle ? 24 : 20, 20, 140),
           sliver: SliverList.separated(
             itemCount: children.length,
             itemBuilder: (context, index) => children[index],
@@ -577,22 +580,36 @@ class PrimaryButton extends StatelessWidget {
     required this.icon,
     required this.text,
     required this.onPressed,
+    this.large = false,
   });
 
   final IconData icon;
   final String text;
   final VoidCallback onPressed;
+  final bool large;
 
   @override
   Widget build(BuildContext context) {
     return FilledButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon),
-      label: Text(text),
+      icon: Icon(icon, size: large ? 22 : null),
+      label: Text(
+        text,
+        style: TextStyle(
+          fontSize: large ? 17 : null,
+          fontWeight: large ? FontWeight.w900 : null,
+        ),
+      ),
       style: FilledButton.styleFrom(
-        minimumSize: const Size(0, 48),
+        minimumSize: Size(0, large ? 58 : 48),
+        padding: EdgeInsets.symmetric(
+          horizontal: large ? 22 : 16,
+          vertical: large ? 16 : 12,
+        ),
         backgroundColor: AppColors.teal,
         foregroundColor: Colors.white,
+        shape: const StadiumBorder(),
+        elevation: large ? 1 : 0,
       ),
     );
   }

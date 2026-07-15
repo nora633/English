@@ -1,11 +1,11 @@
 {
-    "name": "外语岛",
-    "short_name": "外语岛",
+    "name": "开练英语",
+    "short_name": "开练英语",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#F5F7FA",
     "theme_color": "#12BFC6",
-    "description": "外语岛：个人英语与韩语学习练习 App。",
+    "description": "开练英语：个人英语学习练习 App。",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,28 +1,19 @@
 import 'package:flutter/material.dart';
 
 import 'app_shell.dart';
-import 'services/audio_player_service.dart';
-import 'services/audio_recorder_service.dart';
 import 'services/speech_service.dart';
 import 'theme/app_theme.dart';
 
 class EnglishLearningApp extends StatelessWidget {
-  const EnglishLearningApp({
-    super.key,
-    this.audioRecorder,
-    this.audioPlayer,
-    this.speechClient,
-  });
+  const EnglishLearningApp({super.key, this.speechClient});
 
-  final RecordingClient? audioRecorder;
-  final AudioPlaybackClient? audioPlayer;
   final SpeechClient? speechClient;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: '外语岛',
+      title: '开练英语',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.teal,
@@ -32,20 +23,11 @@ class EnglishLearningApp extends StatelessWidget {
         fontFamily: 'System',
         useMaterial3: true,
       ),
-      home: AppShell(
-        audioRecorder: audioRecorder,
-        audioPlayer: audioPlayer,
-        speechClient: speechClient,
-      ),
+      home: AppShell(speechClient: speechClient),
     );
   }
 }
 
 class MyApp extends EnglishLearningApp {
-  const MyApp({
-    super.key,
-    super.audioRecorder,
-    super.audioPlayer,
-    super.speechClient,
-  });
+  const MyApp({super.key, super.speechClient});
 }

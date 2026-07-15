@@ -471,7 +471,7 @@ class _SpeakingPageState extends State<SpeakingPage> {
         if (checkedRecall)
           CardPanel(
             title: '下一步',
-            icon: Icons.arrow_circle_right_outlined,
+            icon: Icons.flag_outlined,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
